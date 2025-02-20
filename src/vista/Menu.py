@@ -28,6 +28,9 @@ class ModernTodoListApp(QWidget):
         self.cargar_tareas()
 
     def cargar_tareas(self):
+        """
+Carga todas las tareas del usuario (sin filtro por prioridad) y actualiza la tabla.
+        """
         try:
             print("🔄 Cargando tareas...")
             if not self.usuario:
@@ -36,40 +39,86 @@ class ModernTodoListApp(QWidget):
             with next(get_db()) as db:
                 tarea_repository = TareaRepository(db)
                 tareas = tarea_repository.obtener_tareas_de_usuario(self.usuario.id)
-                self.task_table.setRowCount(0)
-                self.task_data.clear()
-
-                for tarea in tareas:
-                    print(f"🔍 Datos de la tarea recibida: {tarea}")
-                    id_tarea = str(tarea.idTarea)
-                    self.task_data[id_tarea] = tarea
-                    nombre_categoria = tarea.categoria_obj.nombre if tarea.categoria_obj else "Sin categoría"
-                    self.agregar_tarea(
-                        id_tarea,
-                        tarea.titulo,
-                        tarea.descripcion,
-                        nombre_categoria,
-                        tarea.prioridad,
-                        tarea.estado,
-                        tarea.fecha.strftime("%Y-%m-%d") if tarea.fecha else ""
-                    )
-
+                self.actualizar_tabla(tareas)
         except Exception as e:
             print(f"❌ Error al cargar tareas: {e}")
             QMessageBox.critical(self, "Error", f"Error al cargar tareas: {e}")
+
+    def filtrar_tareas_por_prioridad(self, prioridad):
+        try:
+            if prioridad.lower() == "todas":
+                print("🔎 Se seleccionó la opción Todas. Se cargarán todas las tareas.")
+                self.cargar_tareas()
+                return
+
+            print(f"🔎 Filtrando tareas de prioridad: {prioridad}")
+            with next(get_db()) as db:
+                tarea_repository = TareaRepository(db)
+                # Se obtiene la lista de tareas filtrando por prioridad sin importar mayúsculas/minúsculas
+                todas = tarea_repository.listar_tareas_por_prioridad(prioridad)
+                # Filtrar solo las tareas del usuario actual
+                tareas = [t for t in todas if t.id_usuario == self.usuario.id]
+                self.actualizar_tabla(tareas)
+        except Exception as e:
+            print(f"❌ Error al filtrar tareas: {e}")
+            QMessageBox.critical(self, "Error", f"Error al filtrar tareas: {e}")
+
+    def buscar_tareas(self):
+
+        search_text = self.search_input.text().strip()
+        if not search_text:
+            self.cargar_tareas()
+            return
+
+        try:
+            estado_options = ("Pendiente", "Completado", "terminado", "terminada")
+            categoria = None
+            estado = None
+            if search_text.lower() in estado_options:
+                estado = search_text
+            else:
+                categoria = search_text
+
+            with next(get_db()) as db:
+                tarea_repository = TareaRepository(db)
+                tareas = tarea_repository.buscar_tareas(categoria=categoria, estado=estado)
+                # Filtrar solo las tareas del usuario actual
+                tareas = [t for t in tareas if t.id_usuario == self.usuario.id]
+                self.actualizar_tabla(tareas)
+        except Exception as e:
+            print(f"❌ Error al buscar tareas: {e}")
+            QMessageBox.critical(self, "Error", f"Error al buscar tareas: {e}")
+
+
+    def actualizar_tabla(self, tareas):
+        self.task_table.setRowCount(0)
+        self.task_data.clear()
+        for tarea in tareas:
+            id_tarea = str(tarea.idTarea)
+            self.task_data[id_tarea] = tarea
+            nombre_categoria = tarea.categoria_obj.nombre if tarea.categoria_obj else "Sin categoría"
+            self.agregar_tarea(
+                id_tarea,
+                tarea.titulo,
+                tarea.descripcion,
+                nombre_categoria,
+                tarea.prioridad,
+                tarea.estado,
+                tarea.fecha.strftime("%Y-%m-%d") if tarea.fecha else ""
+            )
 
     def initUI(self):
         if self.usuario:
             welcome_label = QLabel(f"👋 Bienvenido de nuevo, {self.usuario.name}")
         else:
             welcome_label = QLabel("Bienvenido al TODO-LIST")
-
         welcome_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         main_layout = QHBoxLayout()
         main_layout.setSpacing(0)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
+        # Sidebar
         sidebar_frame = QFrame()
         sidebar_frame.setFixedWidth(250)
         sidebar_frame.setStyleSheet("""
@@ -145,12 +194,14 @@ background-color: #c0392b;
         sidebar_frame.setLayout(sidebar_layout)
         main_layout.addWidget(sidebar_frame)
 
+        # Content Frame
         content_frame = QFrame()
         content_frame.setStyleSheet("background-color: #f5f6fa;")
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(30, 30, 30, 30)
         content_layout.setSpacing(20)
 
+        # Header
         header_layout = QVBoxLayout()
         top_header = QHBoxLayout()
         welcome_header = QLabel(f"Welcome back {self.usuario.name if self.usuario else 'Usuario'}")
@@ -194,8 +245,8 @@ border-radius: 5px;
         header_layout.addLayout(rectangles_layout)
         content_layout.addLayout(header_layout)
 
+        # Filter/Layout with Priority menu and search input
         filter_layout = QHBoxLayout()
-
         self.priority_button = QPushButton("PRIORIDAD")
         self.priority_button.setStyleSheet("""
 QPushButton {
@@ -209,15 +260,35 @@ background-color: #d0d0d0;
 }
         """)
         self.priority_menu = QMenu()
+
+        # Option: Todas
+        todas_option = self.priority_menu.addAction("Todas")
+        todas_option.triggered.connect(lambda: (
+                                           self.priority_button.setText("Todas"),
+                                           self.cargar_tareas()
+                                       ))
+        # Priority High (Alta)
         high_priority = self.priority_menu.addAction("Alta")
+        high_priority.triggered.connect(lambda: (
+                                            self.priority_button.setText("Alta 🔴"),
+                                            self.filtrar_tareas_por_prioridad("Alta")
+                                        ))
+        # Priority Medium (Media)
         medium_priority = self.priority_menu.addAction("Media")
+        medium_priority.triggered.connect(lambda: (
+                                              self.priority_button.setText("Media 🟡"),
+                                              self.filtrar_tareas_por_prioridad("Media")
+                                          ))
+        # Priority Low (Baja)
         low_priority = self.priority_menu.addAction("Baja")
-        high_priority.triggered.connect(lambda: self.priority_button.setText("Alta 🔴"))
-        medium_priority.triggered.connect(lambda: self.priority_button.setText("Media 🟡"))
-        low_priority.triggered.connect(lambda: self.priority_button.setText("Baja 🟢"))
+        low_priority.triggered.connect(lambda: (
+                                           self.priority_button.setText("Baja 🟢"),
+                                           self.filtrar_tareas_por_prioridad("Baja")
+                                       ))
         self.priority_button.setMenu(self.priority_menu)
         filter_layout.addWidget(self.priority_button)
 
+        # Search input and search button
         input_wrapper = QFrame()
         input_wrapper.setStyleSheet("""
 QFrame {
@@ -269,6 +340,8 @@ background-color: #e1a500;
 color: white;
 }
         """)
+        # Connect search button to the search function
+        search_button.clicked.connect(self.buscar_tareas)
         input_layout.addWidget(search_button)
         filter_layout.addWidget(input_wrapper)
         filter_layout.addStretch()
@@ -296,7 +369,6 @@ background-color: #ffc61a;
         self.task_table.setHorizontalHeaderLabels([
             "", "NOMBRE", "DESCRIPCION", "CATEGORIA", "PRIORIDAD", "STATUS", "FECHA", "ACCIONES", ""
         ])
-
         self.task_table.setStyleSheet("""
 QTableWidget {
 background-color: white;
@@ -322,7 +394,6 @@ background: transparent;
 color: black;
 }
         """)
-
         self.task_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.task_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.task_table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
@@ -429,16 +500,13 @@ color: white;
         self.task_table.setColumnHidden(8, True)
 
     def actualizar_estado_tarea(self, id_tarea, state):
-        # state == 2 significa que está marcado (Qt.Checked)
         nuevo_estado = "Completada" if state == 2 else "Pendiente"
         print(f"Actualizando estado de la tarea {id_tarea} a {nuevo_estado}")
         try:
             if self.tarea_repository.actualizar_tarea(tarea_id=id_tarea, estado=nuevo_estado):
-                # Actualizar la visual en la tabla
                 row = self.obtener_fila_por_id(id_tarea)
                 if row is not None:
                     self.task_table.item(row, 5).setText(nuevo_estado)
-                    # Opcional: Actualizar colores u otros detalles en la fila.
             else:
                 QMessageBox.critical(self, "Error", "No se pudo actualizar el estado en la base de datos.")
         except Exception as e:
@@ -446,7 +514,6 @@ color: white;
             QMessageBox.critical(self, "Error", f"Error al actualizar estado: {e}")
 
     def obtener_fila_por_id(self, id_tarea):
-        # Recorre la columna oculta (índice 8) para encontrar la fila cuyo id coincida.
         for row in range(self.task_table.rowCount()):
             id_item = self.task_table.item(row, 8)
             if id_item and id_item.text() == id_tarea:
@@ -459,12 +526,10 @@ color: white;
             QMessageBox.warning(self, "Error", "No se pudo obtener el ID de la tarea.")
             return
         id_tarea = id_item.text()
-        # Recupera la tarea desde task_data (se asume que está almacenada como objeto o diccionario)
         tarea_obj = self.task_data.get(id_tarea)
         if not tarea_obj:
             QMessageBox.warning(self, "Error", "Tarea no encontrada en memoria.")
             return
-        # Crea un diccionario con los datos necesarios para el formulario de edición
         tarea_data = {
             "idTarea": tarea_obj.idTarea,
             "titulo": tarea_obj.titulo,
@@ -474,16 +539,12 @@ color: white;
             "estado": tarea_obj.estado,
             "fecha": tarea_obj.fecha.strftime("%Y-%m-%d") if tarea_obj.fecha else ""
         }
-        # Abre el formulario de edición
         self.editar_tarea_window = EditarTarea(tarea_data)
         self.editar_tarea_window.tarea_guardada.connect(self.actualizar_tarea_editada)
         self.editar_tarea_window.show()
 
     def actualizar_tarea_editada(self, tarea_actualizada):
-        # Este slot se llama cuando el formulario de edición emite la señal tarea_guardada.
         print("Tarea actualizada desde el formulario de edición:", tarea_actualizada)
-        # Aquí puedes llamar a un método de repositorio para actualizar en la base de datos,
-        # o simplemente recargar toda la lista.
         self.cargar_tareas()
         QMessageBox.information(self, "Éxito", "✅ Tarea actualizada exitosamente.")
 
