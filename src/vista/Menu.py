@@ -45,6 +45,11 @@ Carga todas las tareas del usuario (sin filtro por prioridad) y actualiza la tab
             QMessageBox.critical(self, "Error", f"Error al cargar tareas: {e}")
 
     def filtrar_tareas_por_prioridad(self, prioridad):
+        """
+Filtra las tareas del usuario según la prioridad.
+Si la prioridad es "Todas", se cargan todas las tareas.
+Se espera que prioridad sea 'Alta', 'Media', 'Baja' o 'Todas'.
+        """
         try:
             if prioridad.lower() == "todas":
                 print("🔎 Se seleccionó la opción Todas. Se cargarán todas las tareas.")
@@ -64,14 +69,21 @@ Carga todas las tareas del usuario (sin filtro por prioridad) y actualiza la tab
             QMessageBox.critical(self, "Error", f"Error al filtrar tareas: {e}")
 
     def buscar_tareas(self):
-
+        """
+Filtra las tareas según el texto introducido en el input de búsqueda.
+Se utiliza el método buscar_tareas del repositorio, el cual permite filtrar
+por categoría (nombre) y/o estado (por ejemplo, 'Pendiente' o 'Completada').
+Si no se ingresa texto, se muestran todas las tareas.
+        """
         search_text = self.search_input.text().strip()
         if not search_text:
             self.cargar_tareas()
             return
 
         try:
-            estado_options = ("Pendiente", "Completado", "terminado", "terminada")
+            # Asumiremos que si el texto coincide con un estado conocido se filtra por estado,
+            # de lo contrario se asume que es el nombre de una categoría
+            estado_options = ("pendiente", "completada", "en proceso", "terminada")
             categoria = None
             estado = None
             if search_text.lower() in estado_options:
@@ -91,6 +103,9 @@ Carga todas las tareas del usuario (sin filtro por prioridad) y actualiza la tab
 
 
     def actualizar_tabla(self, tareas):
+        """
+Actualiza la tabla con la lista de tareas proporcionada.
+        """
         self.task_table.setRowCount(0)
         self.task_data.clear()
         for tarea in tareas:
