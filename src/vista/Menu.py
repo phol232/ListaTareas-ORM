@@ -1,0 +1,533 @@
+import sys
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit,
+    QTableWidget, QTableWidgetItem, QComboBox, QApplication, QHBoxLayout, QListWidget,
+    QFrame, QHeaderView, QToolButton, QListWidgetItem, QMenu, QAbstractItemView, QMessageBox, QCheckBox
+)
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont, QIcon
+from datetime import datetime
+
+from src.vista.CrearTarea import CategoryForm
+from src.vista.EditarTarea import EditarTarea
+from src.logica.Tareas import TareaRepository
+from src.Conexion.BaseDatos import get_db
+
+class ModernTodoListApp(QWidget):
+    def __init__(self, usuario=None, login_window=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.usuario = usuario
+        self.login_window = login_window
+        self.setWindowTitle("TODO - LIST")
+        self.setGeometry(100, 100, 1250, 700)
+        self.db = next(get_db())
+        self.tarea_repository = TareaRepository(self.db)
+
+        self.task_data = {}  # Diccionario que almacena las tareas cargadas (clave = idTarea)
+        self.initUI()
+        self.cargar_tareas()
+
+    def cargar_tareas(self):
+        try:
+            print("🔄 Cargando tareas...")
+            if not self.usuario:
+                QMessageBox.warning(self, "Advertencia", "❌ No hay un usuario logueado.")
+                return
+            with next(get_db()) as db:
+                tarea_repository = TareaRepository(db)
+                tareas = tarea_repository.obtener_tareas_de_usuario(self.usuario.id)
+                self.task_table.setRowCount(0)
+                self.task_data.clear()
+
+                for tarea in tareas:
+                    print(f"🔍 Datos de la tarea recibida: {tarea}")
+                    id_tarea = str(tarea.idTarea)
+                    self.task_data[id_tarea] = tarea
+                    nombre_categoria = tarea.categoria_obj.nombre if tarea.categoria_obj else "Sin categoría"
+                    self.agregar_tarea(
+                        id_tarea,
+                        tarea.titulo,
+                        tarea.descripcion,
+                        nombre_categoria,
+                        tarea.prioridad,
+                        tarea.estado,
+                        tarea.fecha.strftime("%Y-%m-%d") if tarea.fecha else ""
+                    )
+
+        except Exception as e:
+            print(f"❌ Error al cargar tareas: {e}")
+            QMessageBox.critical(self, "Error", f"Error al cargar tareas: {e}")
+
+    def initUI(self):
+        if self.usuario:
+            welcome_label = QLabel(f"👋 Bienvenido de nuevo, {self.usuario.name}")
+        else:
+            welcome_label = QLabel("Bienvenido al TODO-LIST")
+
+        welcome_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        main_layout = QHBoxLayout()
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        sidebar_frame = QFrame()
+        sidebar_frame.setFixedWidth(250)
+        sidebar_frame.setStyleSheet("""
+QFrame {
+background-color: #2965f1;
+border-right: 1px solid #dcdde1;
+}
+        """)
+        sidebar_layout = QVBoxLayout()
+        sidebar_layout.setContentsMargins(20, 20, 20, 20)
+        sidebar_layout.setSpacing(10)
+
+        logo_label = QLabel("TODO - LIST")
+        logo_label.setStyleSheet("""
+font-size: 24px;
+font-weight: bold;
+color: white;
+margin-bottom: 20px;
+        """)
+        sidebar_layout.addWidget(logo_label)
+
+        self.sidebar = QListWidget()
+        menu_items = [
+            (" ALL TASKS", "☰"),
+            (" CALENDAR", "📅"),
+            (" SETTINGS", "⚙️")
+        ]
+        for text, icon in menu_items:
+            item = QListWidgetItem(f"{icon} {text}")
+            self.sidebar.addItem(item)
+        self.sidebar.setStyleSheet("""
+QListWidget {
+border: none;
+font-size: 14px;
+background-color: #2965f1;
+color: white;
+}
+QListWidget::item {
+padding: 10px 10px;
+margin: 0px;
+}
+QListWidget::item:selected {
+background-color: white;
+color: #6c5ce7;
+font-weight: bold;
+}
+QListWidget::item:hover {
+background-color: white;
+color: black;
+}
+        """)
+        sidebar_layout.addWidget(self.sidebar)
+        sidebar_layout.addStretch()
+
+        logout_button = QPushButton("Cerrar Sesión 🚪")
+        logout_button.setStyleSheet("""
+QPushButton {
+background-color: #e74c3c;
+color: white;
+border: none;
+padding: 10px 15px;
+border-radius: 5px;
+font-weight: bold;
+font-size: 14px;
+}
+QPushButton:hover {
+background-color: #c0392b;
+}
+        """)
+        logout_button.clicked.connect(self.logout)
+        sidebar_layout.addWidget(logout_button)
+
+        sidebar_frame.setLayout(sidebar_layout)
+        main_layout.addWidget(sidebar_frame)
+
+        content_frame = QFrame()
+        content_frame.setStyleSheet("background-color: #f5f6fa;")
+        content_layout = QVBoxLayout()
+        content_layout.setContentsMargins(30, 30, 30, 30)
+        content_layout.setSpacing(20)
+
+        header_layout = QVBoxLayout()
+        top_header = QHBoxLayout()
+        welcome_header = QLabel(f"Welcome back {self.usuario.name if self.usuario else 'Usuario'}")
+        welcome_header.setStyleSheet("font-size: 14px; color: #666666;")
+        top_header.addWidget(welcome_header)
+        top_header.addStretch()
+
+        notification_button = QToolButton()
+        notification_button.setText("🔔")
+        notification_button.setStyleSheet("""
+QToolButton {
+font-size: 20px;
+padding: 5px;
+border-radius: 5px;
+}
+QToolButton:hover {
+background-color: #e0e0e0;
+}
+        """)
+        top_header.addWidget(notification_button)
+        header_layout.addLayout(top_header)
+
+        rectangles_layout = QHBoxLayout()
+        rect1 = QFrame()
+        rect1.setFixedSize(200, 100)
+        rect1.setStyleSheet("""
+background-color: white;
+border: 3px solid #dcdde1;
+border-radius: 5px;
+        """)
+        rectangles_layout.addWidget(rect1)
+
+        rect2 = QFrame()
+        rect2.setFixedHeight(100)
+        rect2.setStyleSheet("""
+background-color: white;
+border: 3px solid #dcdde1;
+border-radius: 5px;
+        """)
+        rectangles_layout.addWidget(rect2)
+        header_layout.addLayout(rectangles_layout)
+        content_layout.addLayout(header_layout)
+
+        filter_layout = QHBoxLayout()
+
+        self.priority_button = QPushButton("PRIORIDAD")
+        self.priority_button.setStyleSheet("""
+QPushButton {
+background-color: #ffd32a;
+border-radius: 5px;
+padding: 12px 20px;
+font-size: 14px;
+}
+QPushButton:hover {
+background-color: #d0d0d0;
+}
+        """)
+        self.priority_menu = QMenu()
+        high_priority = self.priority_menu.addAction("Alta")
+        medium_priority = self.priority_menu.addAction("Media")
+        low_priority = self.priority_menu.addAction("Baja")
+        high_priority.triggered.connect(lambda: self.priority_button.setText("Alta 🔴"))
+        medium_priority.triggered.connect(lambda: self.priority_button.setText("Media 🟡"))
+        low_priority.triggered.connect(lambda: self.priority_button.setText("Baja 🟢"))
+        self.priority_button.setMenu(self.priority_menu)
+        filter_layout.addWidget(self.priority_button)
+
+        input_wrapper = QFrame()
+        input_wrapper.setStyleSheet("""
+QFrame {
+background-color: white;
+border-radius: 5px;
+padding: 0px;
+height: 20px;
+border: 1px solid #dcdde1;
+}
+        """)
+        input_layout = QHBoxLayout(input_wrapper)
+        input_layout.setContentsMargins(2, 0, 2, 0)
+        input_layout.setSpacing(2)
+
+        icon_label = QLabel("🔍")
+        icon_label.setStyleSheet("color: black; margin: 0px; font-size: 14px; border: none;")
+        input_layout.addWidget(icon_label)
+
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Categorias o estado")
+        self.search_input.setMinimumSize(140, 30)
+        self.search_input.setFixedHeight(25)
+        self.search_input.setStyleSheet("""
+QLineEdit {
+border: none;
+background-color: white;
+color: black;
+padding: 0 8px;
+font-size: 14px;
+height: 25px;
+}
+        """)
+        input_layout.addWidget(self.search_input)
+
+        search_button = QPushButton("BUSCAR")
+        search_button.setFixedHeight(30)
+        search_button.setStyleSheet("""
+QPushButton {
+background-color: #ffc61a;
+border-radius: 5px;
+padding: 0 15px;
+font-size: 14px;
+font-weight: bold;
+color: black;
+height: 30px;
+}
+QPushButton:hover {
+background-color: #e1a500;
+color: white;
+}
+        """)
+        input_layout.addWidget(search_button)
+        filter_layout.addWidget(input_wrapper)
+        filter_layout.addStretch()
+
+        self.create_button = QPushButton("➕ CREAR TAREA")
+        self.create_button.setStyleSheet("""
+QPushButton {
+background-color: #ffd32a;
+border: none;
+padding: 10px 20px;
+border-radius: 5px;
+font-weight: bold;
+font-size: 14px;
+}
+QPushButton:hover {
+background-color: #ffc61a;
+}
+        """)
+        self.create_button.clicked.connect(self.open_new_task_form)
+        filter_layout.addWidget(self.create_button)
+        content_layout.addLayout(filter_layout)
+
+        self.task_table = QTableWidget()
+        self.task_table.setColumnCount(9)
+        self.task_table.setHorizontalHeaderLabels([
+            "", "NOMBRE", "DESCRIPCION", "CATEGORIA", "PRIORIDAD", "STATUS", "FECHA", "ACCIONES", ""
+        ])
+
+        self.task_table.setStyleSheet("""
+QTableWidget {
+background-color: white;
+border: 2px solid #9c9c9c;
+border-radius: 10px;
+gridline-color: #f5f6fa;
+outline: none;
+}
+QHeaderView::section {
+background-color: white;
+padding: 10px;
+border: none;
+border-bottom: 2px solid #dcdde1;
+font-weight: bold;
+color: #2f3640;
+}
+QTableWidget::item {
+padding: 10px;
+border: none;
+}
+QTableWidget::item:selected {
+background: transparent;
+color: black;
+}
+        """)
+
+        self.task_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.task_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.task_table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
+        self.task_table.setShowGrid(False)
+
+        header = self.task_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.task_table.setColumnWidth(0, 40)
+        for i in range(1, 7):
+            header.setSectionResizeMode(i, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(7, QHeaderView.ResizeMode.Fixed)
+        self.task_table.setColumnWidth(7, 310)
+        header.setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)
+        self.task_table.setColumnWidth(8, 0)
+        self.task_table.setColumnHidden(8, True)
+
+        content_layout.addWidget(self.task_table)
+        content_frame.setLayout(content_layout)
+        main_layout.addWidget(content_frame)
+        self.setLayout(main_layout)
+        self.task_table.verticalHeader().setDefaultSectionSize(50)
+
+    def open_new_task_form(self):
+        if self.usuario and self.usuario.id:
+            self.new_task_window = CategoryForm(self.usuario.id)
+            self.new_task_window.tarea_guardada.connect(self.agregar_tarea_desde_formulario)
+            main_window_geometry = self.geometry()
+            main_x = main_window_geometry.x()
+            main_y = main_window_geometry.y()
+            main_width = main_window_geometry.width()
+            window_width = 350  # Ancho de CategoryForm
+            window_height = 500  # Altura CategoryForm
+            x_position = main_x + (main_width - window_width) // 2
+            y_position = main_y + (700 - window_height) // 2
+            self.new_task_window.resize(window_width, window_height)
+            self.new_task_window.move(x_position, y_position)
+            self.new_task_window.show()
+        else:
+            QMessageBox.critical(self, "Error", "No se pudo determinar el usuario actual.")
+
+    def agregar_tarea_desde_formulario(self, tarea):
+        print("✅ Tarea guardada. Se actualizará la lista de tareas.")
+        self.cargar_tareas()
+        QMessageBox.information(self, "Éxito", "✅ Tarea guardada exitosamente.")
+
+    def agregar_tarea(self, id_tarea, nombre, descripcion, categoria, prioridad, estado, fecha):
+        row = self.task_table.rowCount()
+        self.task_table.insertRow(row)
+        checkbox = QCheckBox()
+        checkbox.setChecked(True if estado == "Completada" else False)
+        checkbox.stateChanged.connect(lambda state, tid=id_tarea: self.actualizar_estado_tarea(tid, state))
+        self.task_table.setCellWidget(row, 0, checkbox)
+
+        self.task_table.setItem(row, 1, QTableWidgetItem(nombre))
+        self.task_table.setItem(row, 2, QTableWidgetItem(descripcion))
+        self.task_table.setItem(row, 3, QTableWidgetItem(categoria))
+        self.task_table.setItem(row, 4, QTableWidgetItem(prioridad))
+        self.task_table.setItem(row, 5, QTableWidgetItem(estado))
+        self.task_table.setItem(row, 6, QTableWidgetItem(fecha))
+
+        action_widget = QWidget()
+        action_layout = QHBoxLayout(action_widget)
+        action_layout.setContentsMargins(5, 2, 5, 2)
+        action_layout.setSpacing(5)
+
+        btn_edit = QPushButton("Editar")
+        btn_edit.setStyleSheet("""
+QPushButton {
+background-color: white;
+color: black;
+border: 1px solid #6c5ce7;
+padding: 5px 10px;
+border-radius: 5px;
+font-weight: bold;
+}
+QPushButton:hover {
+background-color: #6c5ce7;
+color: white;
+}
+        """)
+        btn_edit.clicked.connect(lambda checked, r=row: self.editar_tarea(r))
+        btn_delete = QPushButton("Eliminar")
+        btn_delete.setStyleSheet("""
+QPushButton {
+background-color: white;
+color: red;
+border: 1px solid red;
+padding: 5px 10px;
+border-radius: 5px;
+font-weight: bold;
+}
+QPushButton:hover {
+background-color: red;
+color: white;
+}
+        """)
+        btn_delete.clicked.connect(lambda checked, r=row: self.eliminar_tarea(r))
+        action_layout.addWidget(btn_edit)
+        action_layout.addWidget(btn_delete)
+        action_widget.setMinimumWidth(200)
+        self.task_table.setCellWidget(row, 7, action_widget)
+        id_item = QTableWidgetItem(id_tarea)
+        self.task_table.setItem(row, 8, id_item)
+        self.task_table.setColumnHidden(8, True)
+
+    def actualizar_estado_tarea(self, id_tarea, state):
+        # state == 2 significa que está marcado (Qt.Checked)
+        nuevo_estado = "Completada" if state == 2 else "Pendiente"
+        print(f"Actualizando estado de la tarea {id_tarea} a {nuevo_estado}")
+        try:
+            if self.tarea_repository.actualizar_tarea(tarea_id=id_tarea, estado=nuevo_estado):
+                # Actualizar la visual en la tabla
+                row = self.obtener_fila_por_id(id_tarea)
+                if row is not None:
+                    self.task_table.item(row, 5).setText(nuevo_estado)
+                    # Opcional: Actualizar colores u otros detalles en la fila.
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo actualizar el estado en la base de datos.")
+        except Exception as e:
+            print(f"Error al actualizar estado: {e}")
+            QMessageBox.critical(self, "Error", f"Error al actualizar estado: {e}")
+
+    def obtener_fila_por_id(self, id_tarea):
+        # Recorre la columna oculta (índice 8) para encontrar la fila cuyo id coincida.
+        for row in range(self.task_table.rowCount()):
+            id_item = self.task_table.item(row, 8)
+            if id_item and id_item.text() == id_tarea:
+                return row
+        return None
+
+    def editar_tarea(self, row):
+        id_item = self.task_table.item(row, 8)
+        if id_item is None:
+            QMessageBox.warning(self, "Error", "No se pudo obtener el ID de la tarea.")
+            return
+        id_tarea = id_item.text()
+        # Recupera la tarea desde task_data (se asume que está almacenada como objeto o diccionario)
+        tarea_obj = self.task_data.get(id_tarea)
+        if not tarea_obj:
+            QMessageBox.warning(self, "Error", "Tarea no encontrada en memoria.")
+            return
+        # Crea un diccionario con los datos necesarios para el formulario de edición
+        tarea_data = {
+            "idTarea": tarea_obj.idTarea,
+            "titulo": tarea_obj.titulo,
+            "descripcion": tarea_obj.descripcion,
+            "categoria": (tarea_obj.categoria_obj.nombre if tarea_obj.categoria_obj else "Sin categoría"),
+            "prioridad": tarea_obj.prioridad,
+            "estado": tarea_obj.estado,
+            "fecha": tarea_obj.fecha.strftime("%Y-%m-%d") if tarea_obj.fecha else ""
+        }
+        # Abre el formulario de edición
+        self.editar_tarea_window = EditarTarea(tarea_data)
+        self.editar_tarea_window.tarea_guardada.connect(self.actualizar_tarea_editada)
+        self.editar_tarea_window.show()
+
+    def actualizar_tarea_editada(self, tarea_actualizada):
+        # Este slot se llama cuando el formulario de edición emite la señal tarea_guardada.
+        print("Tarea actualizada desde el formulario de edición:", tarea_actualizada)
+        # Aquí puedes llamar a un método de repositorio para actualizar en la base de datos,
+        # o simplemente recargar toda la lista.
+        self.cargar_tareas()
+        QMessageBox.information(self, "Éxito", "✅ Tarea actualizada exitosamente.")
+
+    def eliminar_tarea(self, row):
+        confirm_dialog = QMessageBox()
+        confirm_dialog.setIcon(QMessageBox.Icon.Warning)
+        confirm_dialog.setWindowTitle("Confirmar Eliminación")
+        confirm_dialog.setText("¿Estás seguro de que deseas eliminar esta tarea?")
+        confirm_dialog.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        confirm_dialog.setDefaultButton(QMessageBox.StandardButton.No)
+        respuesta = confirm_dialog.exec()
+
+        if respuesta == QMessageBox.StandardButton.Yes:
+            id_item = self.task_table.item(row, 8)
+            if id_item is not None:
+                id_tarea = id_item.text()
+                if self.tarea_repository.eliminar_tarea(id_tarea):
+                    del self.task_data[id_tarea]
+                    self.task_table.removeRow(row)
+                    print(f"Tarea eliminada en la fila {row}")
+                else:
+                    QMessageBox.critical(self, "Error", "No se pudo eliminar la tarea de la base de datos.")
+            else:
+                QMessageBox.warning(self, "Error", "No se pudo obtener el ID de la tarea")
+        else:
+            print("Eliminación cancelada.")
+
+    def logout(self):
+        message_box = QMessageBox()
+        message_box.setWindowTitle("Cerrar Sesión")
+        message_box.setText("Sesión cerrada exitosamente.")
+        message_box.setIcon(QMessageBox.Icon.Information)
+        message_box.exec()
+        self.usuario = None
+        self.logged_in_user_id = None
+        self.hide()
+        if hasattr(self, 'login_window') and self.login_window:
+            self.login_window.show()
+        else:
+            from src.vista.login import ModernLogin
+            self.login_window = ModernLogin()
+            self.login_window.show()
+
+    def closeEvent(self, event):
+        if hasattr(self, 'db') and self.db:
+            self.db.close()
+        event.accept()
