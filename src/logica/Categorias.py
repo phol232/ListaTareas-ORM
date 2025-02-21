@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc  # Importa func y desc
+from sqlalchemy import func, desc  
 from src.Conexion.Tablas import Categoria
 
-class CategoriaRepository:  # Cambia a una clase (RECOMENDADO)
+class CategoriaRepository:  
     def __init__(self, session: Session):
         self.session = session
 
@@ -12,9 +12,9 @@ class CategoriaRepository:  # Cambia a una clase (RECOMENDADO)
 
         if ultima_categoria and ultima_categoria[0].startswith('CAT-'):
             ultimo_numero = int(ultima_categoria[0].split('-')[1])
-            nuevo_id = f'CAT-{ultimo_numero + 1:03d}'  # Formato CAT-001, CAT-002...
+            nuevo_id = f'CAT-{ultimo_numero + 1:03d}'  
         else:
-            nuevo_id = 'CAT-001'  # Si no hay categorías, empieza en CAT-001
+            nuevo_id = 'CAT-001'  
 
         return nuevo_id
 
@@ -22,13 +22,13 @@ class CategoriaRepository:  # Cambia a una clase (RECOMENDADO)
 
         existe = self.session.query(Categoria).filter(func.lower(Categoria.nombre) == func.lower(nombre)).first()
         if existe:
-            return None  # O podrías lanzar una excepción, según tu preferencia
+            return None  
 
-        nuevo_id = self.generar_id_categoria()  # Genera el ID
-        categoria = Categoria(idCat=nuevo_id, nombre=nombre)  # Pasa el nuevo ID.
+        nuevo_id = self.generar_id_categoria()  
+        categoria = Categoria(idCat=nuevo_id, nombre=nombre)  
         self.session.add(categoria)
         self.session.commit()
-        self.session.refresh(categoria) #MUY IMPORTANTE
+        self.session.refresh(categoria) 
         return categoria
 
     def obtener_categoria_por_nombre(self, nombre:str):
