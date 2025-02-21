@@ -9,7 +9,7 @@ DATABASE_URL = "mysql+pymysql://root:root123456@localhost:3309/GestionTareas"
 # La haremos UNA SOLA VEZ en un script aparte (ver más abajo).
 
 try:
-    engine = create_engine(DATABASE_URL, echo=True)  # Conexión principal
+    engine = create_engine(DATABASE_URL, echo=True)
     SessionLocal = sessionmaker(bind=engine)
     Base = declarative_base()
 
@@ -17,7 +17,7 @@ except Exception as e:
     print(f"❌ Error de conexión: {str(e)}")
     raise
 
-# Función para obtener una sesión (buena práctica)
+
 def get_db():
     db = SessionLocal()
     try:

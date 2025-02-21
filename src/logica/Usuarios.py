@@ -24,10 +24,9 @@ class UserRepository:
 
         self.session.add(usuario)
         self.session.commit()
-        return usuario  # Devuelve el objeto User creado
+        return usuario
 
     def obtener_usuario_por_email(self, email):
-        """Obtiene un usuario por su email."""
         return self.session.query(User).filter_by(email=email).first()
 
     def validar_usuario(self, email, password_hash):
@@ -37,28 +36,25 @@ class UserRepository:
         print(f"Usuario encontrado: {usuario}")
 
         if usuario:
-            return usuario.id  # <--- RETORNA EL ID
+            return usuario.id
         else:
-            return None  # <--- RETORNA NONE
+            return None
 
     def obtener_todos_los_usuarios(self):
-        """Obtiene todos los usuarios."""
         return self.session.query(User).all()
 
     def eliminar_usuario(self, user_id):
-        """Elimina un usuario por su ID"""
         usuario = self.session.query(User).filter_by(id=user_id).first()
         if usuario:
             self.session.delete(usuario)
             self.session.commit()
-            return True  # Indica que se eliminó
-        return False  # Indica que no se encontró el usuario
+            return True
+        return False
 
     def actualizar_usuario(self, user_id, name=None, email=None, password_hash=None):
-        """Actualiza la información de un usuario"""
         usuario = self.session.query(User).get(user_id)
         if not usuario:
-            return False  # Usuario no encontrado
+            return False
 
         if name:
             usuario.name = name
@@ -71,5 +67,4 @@ class UserRepository:
         return True
 
     def obtener_usuario_por_id(self, user_id):
-        """Obtiene un usuario por su ID."""
         return self.session.query(User).filter_by(id=user_id).first()

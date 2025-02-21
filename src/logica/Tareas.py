@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, text
 from src.Conexion.Tablas import Tarea, Categoria, User
@@ -17,15 +18,13 @@ class TareaRepository:
             return nuevo_id
 
     def crear_tarea(self, user_id: str, titulo: str, descripcion: str, categoria: str, prioridad: str, estado: str, fecha: str):
-        nuevo_id = self.generar_id_tarea()  # Generar ID en Python
-
-        # Buscar la categoría por nombre.
+        nuevo_id = self.generar_id_tarea()
         categoria_obj = self.session.query(Categoria).filter(func.lower(Categoria.nombre) == func.lower(categoria)).first()
         if not categoria_obj:
             raise ValueError(f"Categoría '{categoria}' no encontrada.")
 
         tarea = Tarea(
-            idTarea=nuevo_id,  # Usar el ID generado
+            idTarea=nuevo_id,
             titulo=titulo,
             descripcion=descripcion,
             prioridad=prioridad,
@@ -72,13 +71,21 @@ class TareaRepository:
         self.session.refresh(tarea)
         return True
 
-    def eliminar_tarea(self, tarea_id: str):
-        tarea = self.session.query(Tarea).filter_by(idTarea=tarea_id).first()
-        if tarea:
+    def eliminar_tarea(self, tarea_id: str) -> bool:
+        try:
+            tarea = self.session.query(Tarea).filter_by(idTarea=tarea_id).first()
+            if not tarea:
+                print(f"Tarea con id {tarea_id} no encontrada.")
+                return False
             self.session.delete(tarea)
             self.session.commit()
+            print(f"Tarea {tarea_id} eliminada correctamente.")
             return True
-        return False
+
+        except IntegrityError as e:
+            self.session.rollback()
+            print(f"Error al eliminar la tarea {tarea_id}: {e}")
+            return False
 
     def listar_tareas_por_prioridad(self, prioridad: str):
         prioridad_lower = prioridad.lower()

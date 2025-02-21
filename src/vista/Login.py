@@ -59,16 +59,13 @@ background-color: #005BB5;
             """
     }
 
-    def __init__(self, register_window=None):  # Recibe la ventana de registro
+    def __init__(self, register_window=None):
         super().__init__()
-        self.register_window = register_window  # Guarda la referencia
+        self.register_window = register_window
         self.init_window()
         self.setup_ui_components()
-
-        # --- Inicialización CORRECTA de la base de datos ---
         self.db = next(get_db())  # Obtiene una sesión
         self.user_repository = UserRepository(self.db)
-        # ---------------------------------------------------
         self.logged_in_user_id = None
 
     def init_window(self):
@@ -78,7 +75,6 @@ background-color: #005BB5;
         self.setStyleSheet(self.STYLES['WINDOW'])
 
     def setup_ui_components(self):
-        """Set up all UI components and layouts."""
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(15)
@@ -89,21 +85,18 @@ background-color: #005BB5;
         self.setLayout(main_layout)
 
     def _setup_header_section(self, layout: QVBoxLayout):
-        """Set up the header section with logo and titles."""
         self._add_logo(layout)
         self._add_spacer(layout)
         self._add_titles(layout)
         self._add_spacer(layout)
 
     def _add_logo(self, layout: QVBoxLayout):
-        """Add the logo to the layout."""
         logo_label = QLabel("🔵 ToDO-LIST")
         logo_label.setFont(QFont("Arial", 22, QFont.Weight.Bold))
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(logo_label)
 
     def _add_titles(self, layout: QVBoxLayout):
-        """Add titles to the layout."""
         title_label = QLabel("Log in to your Account")
         title_label.setFont(QFont("Arial", 16, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -115,7 +108,6 @@ background-color: #005BB5;
         layout.addWidget(subtitle_label)
 
     def _setup_social_login_section(self, layout: QVBoxLayout):
-        """Set up the social login buttons section."""
         social_layout = QHBoxLayout()
         self._create_social_button(social_layout, "Google", "Google.png")
         self._create_social_button(social_layout, "Facebook", "Facebook.png")
@@ -123,15 +115,12 @@ background-color: #005BB5;
         self._add_separator(layout)
 
     def _create_social_button(self, layout: QHBoxLayout, text: str, icon_name: str):
-        """Create a social login button."""
         button = QPushButton(text)
         button.setIcon(QIcon(self._get_resource_path(icon_name)))
         button.setStyleSheet(self.STYLES['BUTTON'])
         layout.addWidget(button)
 
-
     def _add_separator(self, layout: QVBoxLayout):
-        """Add a separator label."""
         separator_label = QLabel("OR CONTINUE WITH EMAIL")
         separator_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         separator_label.setStyleSheet("color: gray; margin-top: 10px; margin-bottom: 10px;")
@@ -146,7 +135,6 @@ background-color: #005BB5;
         self._setup_login_options(layout)
 
     def _create_input_field(self, placeholder: str, icon_name: str, is_password: bool = False) -> QLineEdit:
-        """Create an input field with the specified properties."""
         input_field = QLineEdit()
         input_field.setPlaceholderText(placeholder)
         input_field.setStyleSheet(self.STYLES['INPUT'])
@@ -158,7 +146,6 @@ background-color: #005BB5;
         return input_field
 
     def _setup_login_options(self, layout: QVBoxLayout):
-        """Set up the remember me checkbox and forgot password link."""
         options_layout = QHBoxLayout()
         self.remember_me = QCheckBox("Remember me")
         self.forgot_password = self._create_link_label("Forgot Password?", margin_left="68px")
@@ -167,26 +154,22 @@ background-color: #005BB5;
         layout.addLayout(options_layout)
 
     def _create_link_label(self, text: str, margin_left: str = "0px") -> QLabel:
-        """Create a clickable link label."""
         label = QLabel(f'<a href="#">{text}</a>')
         label.setOpenExternalLinks(True)
         label.setStyleSheet(f"color: #0078D7; font-size: 14px; margin-left: {margin_left};")
         return label
 
     def _setup_footer_section(self, layout: QVBoxLayout):
-        """Set up the footer section with login button and create account link."""
         self._add_login_button(layout)
         self._add_create_account_link(layout)
 
     def _add_login_button(self, layout: QVBoxLayout):
-        """Add the login button to the layout."""
         self.login_button = QPushButton("Log in")
         self.login_button.setStyleSheet(self.STYLES['LOGIN_BUTTON'])
         self.login_button.clicked.connect(self.on_login_clicked)
         layout.addWidget(self.login_button)
 
     def _add_create_account_link(self, layout: QVBoxLayout):
-        """Add the create account link."""
         hbox = QHBoxLayout()
         hbox.addStretch()
         create_account_label = QLabel("Don't have an account? ")
@@ -203,12 +186,10 @@ background-color: #005BB5;
 
     @staticmethod
     def _add_spacer(layout: QVBoxLayout, width: int = 20, height: int = 20):
-        """Add a spacer item to the layout."""
         spacer = QSpacerItem(width, height, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
         layout.addSpacerItem(spacer)
 
     def _get_resource_path(self, resource_name: str) -> str:
-        """Get the full path for a resource file."""
         current_dir = os.path.dirname(__file__)
         return os.path.join(current_dir, self.RESOURCES_PATH, resource_name)
 
@@ -221,7 +202,6 @@ background-color: #005BB5;
 
 
     def on_login_clicked(self):
-        """Handle login button click event."""
         email = self.email_input.text().strip()
         password = self.password_input.text()
 
@@ -240,11 +220,9 @@ background-color: #005BB5;
             QMessageBox.warning(self, "Error", "Credenciales inválidas.")
 
     def _process_login(self, email: str, password: str):
-        # Ya no se usa
         pass
 
     def _open_menu(self, user_id):
-        """Open the main menu after successful login."""
         try:
             print(f"🔑 Abriendo el menú principal para ID de usuario: {user_id}")
             usuario = self.user_repository.obtener_usuario_por_id(user_id)  # Obtiene el OBJETO User
@@ -269,7 +247,6 @@ background-color: #005BB5;
             print("Error: Register window not set.")
 
     def closeEvent(self, event):
-        """Maneja el evento de cierre de la ventana."""
         if hasattr(self, 'db') and self.db:
             self.db.close()
         event.accept()
@@ -278,8 +255,8 @@ background-color: #005BB5;
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    from Register import Register  # Importa Register
-    register_window = Register()  # Crea una instancia de Register.
+    from Register import Register
+    register_window = Register()  
     login_window = ModernLogin(register_window=register_window)
     login_window.show()
     sys.exit(app.exec())

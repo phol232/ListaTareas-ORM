@@ -4,12 +4,12 @@ from PyQt6.QtWidgets import (
     QPushButton, QTextEdit, QHBoxLayout, QDateEdit, QMessageBox
 )
 from PyQt6.QtCore import Qt, QDate, pyqtSignal
-
 from src.logica.Tareas import TareaRepository
 from src.Conexion.BaseDatos import get_db
+from src.logica.Categorias import CategoriaRepository
 
 class EditarTarea(QMainWindow):
-    tarea_guardada = pyqtSignal(dict)  # Señal para emitir los datos actualizados
+    tarea_guardada = pyqtSignal(dict)
 
     def __init__(self, tarea_data):
         super().__init__()
@@ -35,16 +35,17 @@ class EditarTarea(QMainWindow):
         self.description.setText(self.tarea_data["descripcion"])
         self.description.setFixedHeight(80)
         main_layout.addWidget(self.description)
-
-        self.categoria_combo = self.create_combo_field("CATEGORÍA:", ["Software", "Hardware", "Red"], main_layout)
-        self.categoria_combo.setCurrentText(self.tarea_data["categoria"])
-
+        self.categoria_combo = QComboBox()
+        main_layout.addWidget(QLabel("CATEGORÍA:"))
+        main_layout.addWidget(self.categoria_combo)
+        self.populate_categoria_combo()
+        index = self.categoria_combo.findText(self.tarea_data["categoria"], Qt.MatchFlag.MatchFixedString)
+        if index >= 0:
+            self.categoria_combo.setCurrentIndex(index)
         self.prioridad_combo = self.create_combo_field("PRIORIDAD:", ["Alta", "Media", "Baja"], main_layout)
         self.prioridad_combo.setCurrentText(self.tarea_data["prioridad"])
-
         self.estado_combo = self.create_combo_field("ESTADO:", ["Pendiente", "En Proceso", "Completada"], main_layout)
         self.estado_combo.setCurrentText(self.tarea_data["estado"])
-
         date_label = QLabel("FECHA:")
         main_layout.addWidget(date_label)
         self.date_edit = QDateEdit(calendarPopup=True)
@@ -55,7 +56,6 @@ class EditarTarea(QMainWindow):
                 self.date_edit.setDate(fecha_qdate)
         self.date_edit.setDisplayFormat("yyyy-MM-dd")
         main_layout.addWidget(self.date_edit)
-
         button_layout = QHBoxLayout()
         save_btn = QPushButton("GUARDAR")
         save_btn.clicked.connect(self.guardar_cambios)
@@ -80,10 +80,19 @@ class EditarTarea(QMainWindow):
         layout.addWidget(combo)
         return combo
 
+    def populate_categoria_combo(self):
+        self.categoria_combo.clear()
+        with next(get_db()) as session:
+            repo = CategoriaRepository(session)
+            categorias = repo.listar_categorias()
+            # Add each category name to the combobox
+            for cat in categorias:
+                self.categoria_combo.addItem(cat.nombre)
+
     def guardar_cambios(self):
         try:
             tarea_actualizada = {
-                "idTarea": self.tarea_data["idTarea"],  # Conserva el id original
+                "idTarea": self.tarea_data["idTarea"],  # Preserve the original ID
                 "titulo": self.titulo_input.text().strip(),
                 "descripcion": self.description.toPlainText().strip(),
                 "categoria": self.categoria_combo.currentText(),
@@ -95,8 +104,6 @@ class EditarTarea(QMainWindow):
             if not tarea_actualizada['titulo'] or not tarea_actualizada['descripcion']:
                 QMessageBox.warning(self, "Campos vacíos", "Los campos no pueden estar vacíos.")
                 return
-
-            # Actualiza la tarea en la base de datos a través del repositorio.
             actualizado = self.tarea_repository.actualizar_tarea(
                 tarea_id=tarea_actualizada["idTarea"],
                 titulo=tarea_actualizada["titulo"],
@@ -110,8 +117,6 @@ class EditarTarea(QMainWindow):
             if not actualizado:
                 QMessageBox.critical(self, "Error", "No se pudo actualizar la tarea en la base de datos.")
                 return
-
-            # Emite la señal con los datos actualizados.
             self.tarea_guardada.emit(tarea_actualizada)
             self.close()
 
@@ -119,7 +124,7 @@ class EditarTarea(QMainWindow):
             QMessageBox.critical(self, "Error", f"Error al guardar los cambios: {e}")
 
     def closeEvent(self, event):
-        # Cierra la sesión de base de datos si está abierta
+        # Close the database session if it is open
         if hasattr(self, 'db') and self.db:
             self.db.close()
         event.accept()

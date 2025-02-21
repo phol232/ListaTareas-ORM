@@ -5,19 +5,17 @@ from PyQt6.QtWidgets import (
     QTextEdit, QHBoxLayout, QDateEdit, QMessageBox
 )
 from PyQt6.QtCore import Qt, QDate, pyqtSignal
-
-# --- Importaciones CORRECTAS ---
 from src.logica.Tareas import TareaRepository
 from src.logica.Categorias import CategoriaRepository
 from src.Conexion.BaseDatos import get_db
-# ---------------------------------
+
 
 class CategoryForm(QMainWindow):
     tarea_guardada = pyqtSignal(dict)
 
-    def __init__(self, user_id: str):  # Recibe user_id
+    def __init__(self, user_id: str):
         super().__init__()
-        self.user_id = user_id  # Guarda user_id
+        self.user_id = user_id
         self.setFixedWidth(330)
         self.init_ui()
 
@@ -75,9 +73,7 @@ class CategoryForm(QMainWindow):
         return combo
 
     def cargar_categorias(self):
-        """Carga las categorías desde la base de datos."""
         try:
-            # Obtiene una NUEVA sesión para esta operación (Context Manager)
             with next(get_db()) as db:
                 categoria_repository = CategoriaRepository(db)
                 categorias = categoria_repository.listar_categorias()
@@ -108,8 +104,6 @@ class CategoryForm(QMainWindow):
                 "user_id": self.user_id
             }
             print("Datos de tarea a guardar:", nueva_tarea)
-
-            # Inserción de la tarea en la base de datos.
             with next(get_db()) as db:
                 tarea_repository = TareaRepository(db)
                 tarea_creada = tarea_repository.crear_tarea(
@@ -121,7 +115,6 @@ class CategoryForm(QMainWindow):
                     estado=nueva_tarea["estado"],
                     fecha=nueva_tarea["fecha"]
                 )
-                # Agregamos el ID de la tarea creada si se desea
                 nueva_tarea["id"] = tarea_creada.id if hasattr(tarea_creada, "id") else None
 
             QMessageBox.information(self, "Éxito", "✅ Tarea guardada exitosamente.")

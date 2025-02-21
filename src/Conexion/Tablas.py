@@ -1,15 +1,15 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Text  # Import ForeignKey, Enum
+from sqlalchemy import Column, String, DateTime, ForeignKey, Enum, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
-import enum  # Importa enum
+import enum
 from src.Conexion.BaseDatos import Base
 
-# Enum para el estado de la notificación
-class NotificationStatus(str, enum.Enum): # Usar str como base
+
+class NotificationStatus(str, enum.Enum):
     UNREAD = 'Unread'
     READ = 'Read'
 
-# Modelo de Usuario
+
 class User(Base):
     __tablename__ = 'users'
 
@@ -21,42 +21,44 @@ class User(Base):
     tareas = relationship('Tarea', back_populates='user', cascade="all, delete")
     notifications = relationship('Notification', back_populates='user', cascade="all, delete")
 
-# Modelo de Categoría
+
 class Categoria(Base):
     __tablename__ = 'categorias'
 
-    idCat = Column(String(12), primary_key=True, nullable=False)  # String para el ID
-    nombre = Column(String(20), nullable=False, unique=True)  # Importante: unique=True
+    idCat = Column(String(12), primary_key=True, nullable=False)
+    nombre = Column(String(20), nullable=False, unique=True)
     fecha = Column(DateTime, default=datetime.utcnow)
 
-    tareas = relationship('Tarea', back_populates='categoria_obj', cascade="all, delete") # Cambio en back_populates
+    tareas = relationship('Tarea', back_populates='categoria_obj', cascade="all, delete")
 
-# Modelo de Tarea
+
 class Tarea(Base):
     __tablename__ = 'tareas'
 
     idTarea = Column(String(12), primary_key=True, nullable=False)
-    id_usuario = Column(String(12), ForeignKey('users.id'), nullable=False)  # ForeignKey a User
-    titulo = Column(String(120), nullable=False)  # Aumenté la longitud
-    descripcion = Column(String(500))  # Usar Text es mejor, pero String con longitud suficiente vale.
-    id_categoria = Column(String(12), ForeignKey('categorias.idCat'), nullable=True)  # ForeignKey a Categoria, permite nulos
-    prioridad = Column(String(255), nullable=False)  # String, NO Enum
-    estado = Column(String(255), nullable=False)  # String, NO Enum
+    id_usuario = Column(String(12), ForeignKey('users.id'), nullable=False)
+    titulo = Column(String(120), nullable=False)
+    descripcion = Column(String(500))
+    id_categoria = Column(String(12), ForeignKey('categorias.idCat'), nullable=True)
+    prioridad = Column(String(255), nullable=False)
+    estado = Column(String(255), nullable=False)
     fecha = Column(DateTime, default=datetime.utcnow)
 
     user = relationship('User', back_populates='tareas')
-    categoria_obj = relationship('Categoria', back_populates='tareas') # Cambio en el nombre.
+    categoria_obj = relationship('Categoria', back_populates='tareas')
+    # Relationship inversa para notificaciones (opcional)
+    notifications = relationship('Notification', back_populates='tarea', cascade="all, delete")
 
-# Modelo de Notificación
+
 class Notification(Base):
     __tablename__ = 'notifications'
 
     idNot = Column(String(12), primary_key=True, nullable=False)
     user_id = Column(String(12), ForeignKey('users.id'), nullable=False)
-    task_id = Column(String(12), ForeignKey('tareas.idTarea'), nullable=False)  # ForeignKey a Tarea
+    task_id = Column(String(12), ForeignKey('tareas.idTarea', ondelete='CASCADE'), nullable=False)
     message = Column(Text, nullable=False)
     status = Column(Enum(NotificationStatus), default=NotificationStatus.UNREAD)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship('User', back_populates='notifications')
-    tarea = relationship('Tarea')  # No necesitas back_populates aquí
+    tarea = relationship('Tarea', back_populates='notifications')
