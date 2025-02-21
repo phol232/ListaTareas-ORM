@@ -4,12 +4,12 @@ from datetime import datetime
 import enum  # Importa enum
 from src.Conexion.BaseDatos import Base
 
-# Enum para el estado de la notificación
+
 class NotificationStatus(str, enum.Enum): # Usar str como base
     UNREAD = 'Unread'
     READ = 'Read'
 
-# Modelo de Usuario
+
 class User(Base):
     __tablename__ = 'users'
 
@@ -21,7 +21,7 @@ class User(Base):
     tareas = relationship('Tarea', back_populates='user', cascade="all, delete")
     notifications = relationship('Notification', back_populates='user', cascade="all, delete")
 
-# Modelo de Categoría
+
 class Categoria(Base):
     __tablename__ = 'categorias'
 
@@ -31,7 +31,7 @@ class Categoria(Base):
 
     tareas = relationship('Tarea', back_populates='categoria_obj', cascade="all, delete") # Cambio en back_populates
 
-# Modelo de Tarea
+
 class Tarea(Base):
     __tablename__ = 'tareas'
 
@@ -47,7 +47,7 @@ class Tarea(Base):
     user = relationship('User', back_populates='tareas')
     categoria_obj = relationship('Categoria', back_populates='tareas') # Cambio en el nombre.
 
-# Modelo de Notificación
+
 class Notification(Base):
     __tablename__ = 'notifications'
 
