@@ -115,10 +115,6 @@ class CategoryForm(QMainWindow):
                     estado=nueva_tarea["estado"],
                     fecha=nueva_tarea["fecha"]
                 )
-<<<<<<< HEAD
-=======
-
->>>>>>> bf3e272c30dfd996ca0e5da957314125d4327920
                 nueva_tarea["id"] = tarea_creada.id if hasattr(tarea_creada, "id") else None
 
             QMessageBox.information(self, "Éxito", "✅ Tarea guardada exitosamente.")
