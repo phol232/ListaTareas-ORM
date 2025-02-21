@@ -1,19 +1,27 @@
 import sys
 import os
-from PyQt6.QtWidgets import (QApplication, QWidget, QLabel, QLineEdit,
-                             QPushButton, QVBoxLayout, QHBoxLayout,
-                             QSpacerItem, QSizePolicy, QMessageBox)
+import hashlib
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout,
+    QHBoxLayout, QSpacerItem, QSizePolicy, QMessageBox
+)
 from PyQt6.QtGui import QFont, QIcon, QAction
 from PyQt6.QtCore import Qt
+from src.logica.Usuarios import UserRepository
+from src.Conexion.BaseDatos import get_db
+from src.vista.Menu import ModernTodoListApp  
 
 class Register(QWidget):
 
     WINDOW_TITLE = "Register"
     WINDOW_GEOMETRY = (100, 100, 400, 550)
     RESOURCES_PATH = "../Resources"
+
     def __init__(self, login_window=None):
         super().__init__()
         self.login_window = login_window
+        self.db = next(get_db())
+        self.user_repo = UserRepository(self.db)
         self.init_window()
         self.setup_ui_components()
 
@@ -61,7 +69,6 @@ class Register(QWidget):
         layout.addWidget(self.password_input)
 
     def _create_input_field(self, placeholder: str, icon_name: str, is_password: bool = False) -> QLineEdit:
-        """Creates an input field with an icon INSIDE, using QAction."""
         input_field = QLineEdit()
         input_field.setPlaceholderText(placeholder)
         input_field.setStyleSheet("""
@@ -130,13 +137,50 @@ background-color: #005BB5;
         layout.addItem(spacer)
 
     def register_user(self):
-        QMessageBox.information(self, "Registration", "Registration successful! (Placeholder)")
+        full_name = self.fullname_input.text().strip()
+        email = self.email_input.text().strip()
+        password = self.password_input.text()
 
-    def go_to_login(self):
+        if not full_name or not email or not password:
+            QMessageBox.warning(self, "Input Error", "All fields are required.")
+            return
 
+        if self.user_repo.obtener_usuario_por_email(email):
+            QMessageBox.warning(self, "Registration Error", "Email already registered.")
+            return
+
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+        user = self.user_repo.crear_usuario(full_name, email, password_hash)
+        if user:
+            QMessageBox.information(self, "Registration", "Registration successful!")
+            self.open_menu(user)
+        else:
+            QMessageBox.warning(self, "Registration Error", "User could not be created.")
+
+    def open_menu(self, user):
         if self.login_window:
             self.login_window.show()
             self.hide()
         else:
-            print("Error: No login window provided.")
+            menu_window = ModernTodoListApp(usuario=user)
+            menu_window.show()
+            self.hide()
 
+    def go_to_login(self):
+        if self.login_window:
+            self.login_window.show()
+            self.hide()
+        else:
+            print("Error: No login window provided. Consider opening ModernTodoListApp directly.")
+
+    def closeEvent(self, event):
+        if hasattr(self, "db") and self.db:
+            self.db.close()
+        event.accept()
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = Register()
+    window.show()
+    sys.exit(app.exec())

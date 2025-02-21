@@ -9,7 +9,12 @@ class TareaRepository:
 
     def generar_id_tarea(self):
         with self.session.begin_nested():
-            ultima_tarea = self.session.query(Tarea.idTarea).order_by(desc(Tarea.idTarea)).with_for_update().first()
+            ultima_tarea = (
+                self.session.query(Tarea.idTarea)
+                .order_by(desc(Tarea.idTarea))
+                .with_for_update()
+                .first()
+            )
             if ultima_tarea and ultima_tarea[0].startswith('TAR-'):
                 ultimo_numero = int(ultima_tarea[0].split('-')[1])
                 nuevo_id = f'TAR-{ultimo_numero + 1:03d}'
@@ -103,12 +108,16 @@ class TareaRepository:
 
         return query.all()
 
-    def obtener_total_tareas(self):
-        result = self.session.execute(text("SELECT total_tasks FROM tarea_count WHERE id = 1")).fetchone()
-        return result[0] if result else 0
+    def obtener_total_tareas(self, user_id: str):
+        return self.session.query(Tarea).filter_by(id_usuario=user_id).count()
 
-    def obtener_totales_por_estado(self):
-        resultado = self.session.query(Tarea.estado, func.count(Tarea.idTarea)).group_by(Tarea.estado).all()
+    def obtener_totales_por_estado(self, user_id: str):
+        resultado = (
+            self.session.query(Tarea.estado, func.count(Tarea.idTarea))
+            .filter_by(id_usuario=user_id)
+            .group_by(Tarea.estado)
+            .all()
+        )
         totales = {"Completada": 0, "En Proceso": 0, "Pendiente": 0}
         for estado, cantidad in resultado:
             totales[estado] = cantidad

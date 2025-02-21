@@ -4,7 +4,7 @@ from datetime import datetime
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit,
     QTableWidget, QTableWidgetItem, QComboBox, QApplication, QHBoxLayout, QListWidget,
-    QFrame, QHeaderView, QToolButton, QListWidgetItem, QMenu, QAbstractItemView, QMessageBox, QCheckBox
+    QFrame, QHeaderView, QToolButton, QListWidgetItem, QMenu, QAbstractItemView, QMessageBox, QCheckBox, QDialog
 )
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont, QIcon
@@ -34,7 +34,6 @@ class ModernTodoListApp(QWidget):
             if not self.usuario:
                 QMessageBox.warning(self, "Advertencia", "❌ No hay un usuario logueado.")
                 return
-            # Use a new session to load tasks.
             with next(get_db()) as db:
                 tarea_repository = TareaRepository(db)
                 tareas = tarea_repository.obtener_tareas_de_usuario(self.usuario.id)
@@ -51,7 +50,6 @@ class ModernTodoListApp(QWidget):
                 print("🔎 Se seleccionó la opción Todas. Se cargarán todas las tareas.")
                 self.cargar_tareas()
                 return
-
             print(f"🔎 Filtrando tareas de prioridad: {prioridad}")
             with next(get_db()) as db:
                 tarea_repository = TareaRepository(db)
@@ -106,10 +104,16 @@ class ModernTodoListApp(QWidget):
             )
 
     def actualizar_totales_por_estado(self):
+        if not self.usuario:
+            self.total_tasks_label.setText("0")
+            self.completed_tasks_label.setText("0")
+            self.inprocess_tasks_label.setText("0")
+            self.pending_tasks_label.setText("0")
+            return
         with next(get_db()) as db:
             repo = TareaRepository(db)
-            total_tasks = repo.obtener_total_tareas()
-            totales = repo.obtener_totales_por_estado()
+            total_tasks = repo.obtener_total_tareas(self.usuario.id)
+            totales = repo.obtener_totales_por_estado(self.usuario.id)
             self.total_tasks_label.setText(str(total_tasks))
             self.completed_tasks_label.setText(str(totales.get("Completada", 0)))
             self.inprocess_tasks_label.setText(str(totales.get("En Proceso", 0)))
@@ -135,7 +139,6 @@ border-right: 1px solid #dcdde1;
         sidebar_layout = QVBoxLayout()
         sidebar_layout.setContentsMargins(20, 20, 20, 20)
         sidebar_layout.setSpacing(10)
-
         logo_label = QLabel("TODO - LIST")
         logo_label.setStyleSheet("""
 font-size: 24px;
@@ -144,7 +147,6 @@ color: white;
 margin-bottom: 20px;
         """)
         sidebar_layout.addWidget(logo_label)
-
         self.sidebar = QListWidget()
         menu_items = [
             (" ALL TASKS", "☰"),
@@ -177,7 +179,6 @@ color: black;
         """)
         sidebar_layout.addWidget(self.sidebar)
         sidebar_layout.addStretch()
-
         logout_button = QPushButton("Cerrar Sesión 🚪")
         logout_button.setStyleSheet("""
 QPushButton {
@@ -494,17 +495,10 @@ color: black;
         if self.usuario and self.usuario.id:
             self.new_task_window = CategoryForm(self.usuario.id)
             self.new_task_window.tarea_guardada.connect(self.agregar_tarea_desde_formulario)
-            main_window_geometry = self.geometry()
-            main_x = main_window_geometry.x()
-            main_y = main_window_geometry.y()
-            main_width = main_window_geometry.width()
-            window_width = 350  # Width for CategoryForm
-            window_height = 500  # Height for CategoryForm
-            x_position = main_x + (main_width - window_width) // 2
-            y_position = main_y + (700 - window_height) // 2
-            self.new_task_window.resize(window_width, window_height)
-            self.new_task_window.move(x_position, y_position)
-            self.new_task_window.show()
+            if isinstance(self.new_task_window, QDialog):
+                self.new_task_window.exec()
+            else:
+                self.new_task_window.show()
         else:
             QMessageBox.critical(self, "Error", "No se pudo determinar el usuario actual.")
 
@@ -512,17 +506,10 @@ color: black;
         if self.usuario and self.usuario.id:
             from src.vista.CrearCategoria import CrearCategoria
             self.categories_window = CrearCategoria(self.usuario.id)
-            main_window_geometry = self.geometry()
-            main_x = main_window_geometry.x()
-            main_y = main_window_geometry.y()
-            main_width = main_window_geometry.width()
-            window_width = 450
-            window_height = 450
-            x_position = main_x + (main_width - window_width) // 2
-            y_position = main_y + (700 - window_height) // 2
-            self.categories_window.resize(window_width, window_height)
-            self.categories_window.move(x_position, y_position)
-            self.categories_window.show()
+            if isinstance(self.categories_window, QDialog):
+                self.categories_window.exec()
+            else:
+                self.categories_window.show()
         else:
             QMessageBox.critical(self, "Error", "No se pudo determinar el usuario actual.")
 
@@ -564,7 +551,7 @@ background-color: #6c5ce7;
 color: white;
 }
         """)
-        btn_edit.clicked.connect(lambda checked, r=row: self.editar_tarea(r))
+        btn_edit.clicked.connect(lambda checked, tid=id_tarea: self.editar_tarea_by_id(tid))
         btn_delete = QPushButton("Eliminar")
         btn_delete.setStyleSheet("""
 QPushButton {
@@ -580,7 +567,7 @@ background-color: red;
 color: white;
 }
         """)
-        btn_delete.clicked.connect(lambda checked, r=row: self.eliminar_tarea(r))
+        btn_delete.clicked.connect(lambda checked, tid=id_tarea: self.eliminar_tarea_by_id(tid))
         action_layout.addWidget(btn_edit)
         action_layout.addWidget(btn_delete)
         action_widget.setMinimumWidth(200)
@@ -589,35 +576,8 @@ color: white;
         self.task_table.setItem(row, 8, id_item)
         self.task_table.setColumnHidden(8, True)
 
-    def actualizar_estado_tarea(self, id_tarea, state):
-        nuevo_estado = "Completada" if state == 2 else "Pendiente"
-        print(f"Actualizando estado de la tarea {id_tarea} a {nuevo_estado}")
-        try:
-            if self.tarea_repository.actualizar_tarea(tarea_id=id_tarea, estado=nuevo_estado):
-                row = self.obtener_fila_por_id(id_tarea)
-                if row is not None:
-                    self.task_table.item(row, 5).setText(nuevo_estado)
-                self.actualizar_totales_por_estado()
-            else:
-                QMessageBox.critical(self, "Error", "No se pudo actualizar el estado en la base de datos.")
-        except Exception as e:
-            print(f"Error al actualizar estado: {e}")
-            QMessageBox.critical(self, "Error", f"Error al actualizar estado: {e}")
-
-    def obtener_fila_por_id(self, id_tarea):
-        for row in range(self.task_table.rowCount()):
-            id_item = self.task_table.item(row, 8)
-            if id_item and id_item.text() == id_tarea:
-                return row
-        return None
-
-    def editar_tarea(self, row):
-        id_item = self.task_table.item(row, 8)
-        if id_item is None:
-            QMessageBox.warning(self, "Error", "No se pudo obtener el ID de la tarea.")
-            return
-        id_tarea = id_item.text()
-        tarea_obj = self.task_data.get(id_tarea)
+    def editar_tarea_by_id(self, tid: str):
+        tarea_obj = self.task_data.get(tid)
         if not tarea_obj:
             QMessageBox.warning(self, "Error", "Tarea no encontrada en memoria.")
             return
@@ -634,12 +594,16 @@ color: white;
         self.editar_tarea_window.tarea_guardada.connect(self.actualizar_tarea_editada)
         self.editar_tarea_window.show()
 
-    def actualizar_tarea_editada(self, tarea_actualizada):
-        print("Tarea actualizada desde el formulario de edición:", tarea_actualizada)
-        self.cargar_tareas()
-        QMessageBox.information(self, "Éxito", "✅ Tarea actualizada exitosamente.")
-
-    def eliminar_tarea(self, row):
+    def eliminar_tarea_by_id(self, tid: str):
+        row = None
+        for r in range(self.task_table.rowCount()):
+            item = self.task_table.item(r, 8)
+            if item and item.text() == tid:
+                row = r
+                break
+        if row is None:
+            QMessageBox.warning(self, "Error", "No se pudo obtener el ID de la tarea.")
+            return
         confirm_dialog = QMessageBox()
         confirm_dialog.setIcon(QMessageBox.Icon.Warning)
         confirm_dialog.setWindowTitle("Confirmar Eliminación")
@@ -647,22 +611,41 @@ color: white;
         confirm_dialog.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         confirm_dialog.setDefaultButton(QMessageBox.StandardButton.No)
         respuesta = confirm_dialog.exec()
-
         if respuesta == QMessageBox.StandardButton.Yes:
-            id_item = self.task_table.item(row, 8)
-            if id_item is not None:
-                id_tarea = id_item.text()
-                if self.tarea_repository.eliminar_tarea(id_tarea):
-                    del self.task_data[id_tarea]
-                    self.task_table.removeRow(row)
-                    print(f"Tarea eliminada en la fila {row}")
-                else:
-                    QMessageBox.critical(self, "Error", "No se pudo eliminar la tarea de la base de datos.")
+            if self.tarea_repository.eliminar_tarea(tid):
+                del self.task_data[tid]
+                self.cargar_tareas()
+                print(f"Tarea {tid} eliminada correctamente.")
             else:
-                QMessageBox.warning(self, "Error", "No se pudo obtener el ID de la tarea")
+                QMessageBox.critical(self, "Error", "No se pudo eliminar la tarea de la base de datos.")
         else:
             print("Eliminación cancelada.")
         self.actualizar_totales_por_estado()
+
+    def actualizar_estado_tarea(self, id_tarea, state):
+        nuevo_estado = "Completada" if state == 2 else "Pendiente"
+        print(f"Actualizando estado de la tarea {id_tarea} a {nuevo_estado}")
+        try:
+            if self.tarea_repository.actualizar_tarea(tarea_id=id_tarea, estado=nuevo_estado):
+                row = None
+                for r in range(self.task_table.rowCount()):
+                    item = self.task_table.item(r, 8)
+                    if item and item.text() == id_tarea:
+                        row = r
+                        break
+                if row is not None:
+                    self.task_table.item(row, 5).setText(nuevo_estado)
+                self.actualizar_totales_por_estado()
+            else:
+                QMessageBox.critical(self, "Error", "No se pudo actualizar el estado en la base de datos.")
+        except Exception as e:
+            print(f"Error al actualizar estado: {e}")
+            QMessageBox.critical(self, "Error", f"Error al actualizar estado: {e}")
+
+    def actualizar_tarea_editada(self, tarea_actualizada):
+        print("Tarea actualizada desde el formulario de edición:", tarea_actualizada)
+        self.cargar_tareas()
+        QMessageBox.information(self, "Éxito", "✅ Tarea actualizada exitosamente.")
 
     def logout(self):
         message_box = QMessageBox()
@@ -676,7 +659,7 @@ color: white;
         if hasattr(self, 'login_window') and self.login_window:
             self.login_window.show()
         else:
-            from src.vista.login import ModernLogin
+            from src.vista.Login import ModernLogin
             self.login_window = ModernLogin()
             self.login_window.show()
 

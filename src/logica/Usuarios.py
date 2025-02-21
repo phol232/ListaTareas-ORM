@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc  # Import desc
-from src.Conexion.Tablas import User  # Asegúrate de que la ruta sea correcta
-
+from sqlalchemy import desc
+from src.Conexion.Tablas import User  
 
 class UserRepository:
     def __init__(self, session: Session):
@@ -21,7 +20,6 @@ class UserRepository:
     def crear_usuario(self, name, email, password_hash):
         nuevo_id = self.generar_id_usuario()
         usuario = User(id=nuevo_id, name=name, email=email, password_hash=password_hash)
-
         self.session.add(usuario)
         self.session.commit()
         return usuario
@@ -30,11 +28,10 @@ class UserRepository:
         return self.session.query(User).filter_by(email=email).first()
 
     def validar_usuario(self, email, password_hash):
-        print(f"Validando usuario con email: {email}, hash: {password_hash}")
+        print(f"Validating user with email: {email}, hash: {password_hash}")
         email = email.strip()
         usuario = self.session.query(User).filter_by(email=email, password_hash=password_hash).first()
-        print(f"Usuario encontrado: {usuario}")
-
+        print(f"User found: {usuario}")
         if usuario:
             return usuario.id
         else:
@@ -55,14 +52,12 @@ class UserRepository:
         usuario = self.session.query(User).get(user_id)
         if not usuario:
             return False
-
         if name:
             usuario.name = name
         if email:
             usuario.email = email
         if password_hash:
             usuario.password_hash = password_hash
-
         self.session.commit()
         return True
 

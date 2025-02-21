@@ -1,14 +1,13 @@
 import sys
 import os
 import hashlib
-
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout,
-    QCheckBox, QSpacerItem, QSizePolicy, QMessageBox
+    QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout,
+    QHBoxLayout, QCheckBox, QSpacerItem, QSizePolicy, QMessageBox
 )
 from PyQt6.QtGui import QFont, QIcon, QAction
 from PyQt6.QtCore import Qt
-from src.logica.Usuarios import UserRepository
+from src.logica.Usuarios import UserRepository  
 from src.Conexion.BaseDatos import get_db
 from src.vista.Menu import ModernTodoListApp
 
@@ -36,7 +35,7 @@ background-color: #F3F4F6;
 QLineEdit {
 border: 1px solid #D1D5DB;
 padding: 10px;
-padding-left: 15px; /*  ESPACIO para el icono */
+padding-left: 15px;
 border-radius: 5px;
 font-size: 14px;
 height: 30px;
@@ -64,12 +63,11 @@ background-color: #005BB5;
         self.register_window = register_window
         self.init_window()
         self.setup_ui_components()
-        self.db = next(get_db())  # Obtiene una sesión
+        self.db = next(get_db())  # Obtain a database session
         self.user_repository = UserRepository(self.db)
         self.logged_in_user_id = None
 
     def init_window(self):
-        """Initialize the main window properties."""
         self.setWindowTitle(self.WINDOW_TITLE)
         self.setGeometry(*self.WINDOW_GEOMETRY)
         self.setStyleSheet(self.STYLES['WINDOW'])
@@ -127,8 +125,7 @@ background-color: #005BB5;
         layout.addWidget(separator_label)
 
     def _setup_email_login_section(self, layout: QVBoxLayout):
-        """Set up the email login section with input fields."""
-        self.email_input = self._create_input_field("Email", "icons8-email-24.png")  # Iconos
+        self.email_input = self._create_input_field("Email", "icons8-email-24.png")
         self.password_input = self._create_input_field("Password", "icons8-password-24.png", is_password=True)
         layout.addWidget(self.email_input)
         layout.addWidget(self.password_input)
@@ -180,7 +177,6 @@ background-color: #005BB5;
         self.register_link.setStyleSheet("font-size: 14px; color: #0078D7;")
         self.register_link.linkActivated.connect(self.go_to_register)
         hbox.addWidget(self.register_link)
-
         hbox.addStretch()
         layout.addLayout(hbox)
 
@@ -193,13 +189,11 @@ background-color: #005BB5;
         current_dir = os.path.dirname(__file__)
         return os.path.join(current_dir, self.RESOURCES_PATH, resource_name)
 
-
     def _validate_login_input(self, email: str, password: str) -> bool:
         if not email or not password:
-            QMessageBox.warning(self, "Error", "Por favor, completa todos los campos.")
+            QMessageBox.warning(self, "Error", "Please fill in all fields.")
             return False
         return True
-
 
     def on_login_clicked(self):
         email = self.email_input.text().strip()
@@ -213,33 +207,28 @@ background-color: #005BB5;
 
         if user_id:
             self.logged_in_user_id = user_id
-            QMessageBox.information(self, "Éxito", "Inicio de sesión exitoso.")
-            self._open_menu(user_id)  # Pasa el ID a _open_menu
+            QMessageBox.information(self, "Success", "Login successful.")
+            self._open_menu(user_id)
             self.close()
         else:
-            QMessageBox.warning(self, "Error", "Credenciales inválidas.")
-
-    def _process_login(self, email: str, password: str):
-        pass
+            QMessageBox.warning(self, "Error", "Invalid credentials.")
 
     def _open_menu(self, user_id):
         try:
-            print(f"🔑 Abriendo el menú principal para ID de usuario: {user_id}")
-            usuario = self.user_repository.obtener_usuario_por_id(user_id)  # Obtiene el OBJETO User
+            print(f"🔑 Opening main menu for user ID: {user_id}")
+            usuario = self.user_repository.obtener_usuario_por_id(user_id)
             if usuario is None:
-                QMessageBox.critical(self, "Error", "Usuario no encontrado.")
+                QMessageBox.critical(self, "Error", "User not found.")
                 return
 
-            self.menu_window = ModernTodoListApp(usuario=usuario)  # Pasa el OBJETO USUARIO
+            self.menu_window = ModernTodoListApp(usuario=usuario)
             self.menu_window.show()
             self.hide()
         except Exception as e:
-            print(f"❌ Error al abrir el menú principal: {e}")
-            QMessageBox.critical(self, "Error", f"No se pudo abrir el menú: {e}")
-
+            print(f"❌ Error opening main menu: {e}")
+            QMessageBox.critical(self, "Error", f"Unable to open menu: {e}")
 
     def go_to_register(self):
-
         if self.register_window:
             self.register_window.show()
             self.hide()
@@ -247,16 +236,15 @@ background-color: #005BB5;
             print("Error: Register window not set.")
 
     def closeEvent(self, event):
-        if hasattr(self, 'db') and self.db:
+        if hasattr(self, "db") and self.db:
             self.db.close()
         event.accept()
-
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     from Register import Register
-    register_window = Register()  
+    register_window = Register()
     login_window = ModernLogin(register_window=register_window)
     login_window.show()
     sys.exit(app.exec())
