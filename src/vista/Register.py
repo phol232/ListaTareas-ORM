@@ -14,11 +14,11 @@ as an argument in its constructor.
 
     WINDOW_TITLE = "Register"
     WINDOW_GEOMETRY = (100, 100, 400, 550)
-    RESOURCES_PATH = "../Resources"  # Correct path to resources
+    RESOURCES_PATH = "../Resources"  
 
-    def __init__(self, login_window=None):  # <---  Takes login_window
+    def __init__(self, login_window=None):  
         super().__init__()
-        self.login_window = login_window  # <--- Stores the login window
+        self.login_window = login_window  
         self.init_window()
         self.setup_ui_components()
 
@@ -48,7 +48,7 @@ as an argument in its constructor.
 
     def _add_logo(self, layout: QVBoxLayout):
         """Add the logo."""
-        logo_label = QLabel("🔵 ToDO-LIST")  # Or use an image
+        logo_label = QLabel("🔵 ToDO-LIST")  
         logo_label.setFont(QFont("Arial", 22, QFont.Weight.Bold))
         logo_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(logo_label)
@@ -86,16 +86,14 @@ height: 30px;
         if is_password:
             input_field.setEchoMode(QLineEdit.EchoMode.Password)
 
-        # Load the icon and create the QAction
         icon_path = os.path.join(self.RESOURCES_PATH, icon_name)
         if os.path.exists(icon_path):
             icon = QIcon(icon_path)
-            icon_action = QAction(icon, "", input_field)  # "" is the tooltip
+            icon_action = QAction(icon, "", input_field)  
             input_field.addAction(icon_action, QLineEdit.ActionPosition.LeadingPosition)
         else:
             print(f"Warning: Icon file not found: {icon_path}")
-            # Error handling (optional)
-
+            
         return input_field
 
     def _setup_footer_section(self, layout: QVBoxLayout):
@@ -127,17 +125,16 @@ background-color: #005BB5;
     def _add_login_link(self, layout: QVBoxLayout):
         """Add the 'Already have an account?' link."""
         hbox = QHBoxLayout()
-        hbox.addStretch()  # Center horizontally
+        hbox.addStretch()  
         login_label = QLabel("Already have an account? ")
         login_label.setStyleSheet("font-size: 14px;")
         hbox.addWidget(login_label)
 
-        self.login_link = QLabel("<a href='#'>Login</a>")  # Use QLabel for the link
+        self.login_link = QLabel("<a href='#'>Login</a>")  
         self.login_link.setStyleSheet("font-size: 14px; color: #0078D7;")
-        self.login_link.linkActivated.connect(self.go_to_login)  # Connect to go_to_login
+        self.login_link.linkActivated.connect(self.go_to_login)  
         hbox.addWidget(self.login_link)
-        hbox.addStretch() # Center horizontally
-
+        hbox.addStretch() 
         layout.addLayout(hbox)
 
     @staticmethod
