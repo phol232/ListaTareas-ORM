@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc  # Import desc
-from src.Conexion.Tablas import User  # Asegúrate de que la ruta sea correcta
+from sqlalchemy import func, desc  
+from src.Conexion.Tablas import User  
 
 
 class UserRepository:
@@ -24,7 +24,7 @@ class UserRepository:
 
         self.session.add(usuario)
         self.session.commit()
-        return usuario  # Devuelve el objeto User creado
+        return usuario  
 
     def obtener_usuario_por_email(self, email):
         """Obtiene un usuario por su email."""
@@ -37,9 +37,9 @@ class UserRepository:
         print(f"Usuario encontrado: {usuario}")
 
         if usuario:
-            return usuario.id  # <--- RETORNA EL ID
+            return usuario.id  
         else:
-            return None  # <--- RETORNA NONE
+            return None  
 
     def obtener_todos_los_usuarios(self):
         """Obtiene todos los usuarios."""
@@ -51,14 +51,14 @@ class UserRepository:
         if usuario:
             self.session.delete(usuario)
             self.session.commit()
-            return True  # Indica que se eliminó
-        return False  # Indica que no se encontró el usuario
+            return True  
+        return False  
 
     def actualizar_usuario(self, user_id, name=None, email=None, password_hash=None):
         """Actualiza la información de un usuario"""
         usuario = self.session.query(User).get(user_id)
         if not usuario:
-            return False  # Usuario no encontrado
+            return False  
 
         if name:
             usuario.name = name
