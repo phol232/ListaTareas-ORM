@@ -59,9 +59,9 @@ background-color: #005BB5;
             """
     }
 
-    def __init__(self, register_window=None):  # Recibe la ventana de registro
+    def __init__(self, register_window=None):  
         super().__init__()
-        self.register_window = register_window  # Guarda la referencia
+        self.register_window = register_window  
         self.init_window()
         self.setup_ui_components()
 
@@ -139,7 +139,7 @@ background-color: #005BB5;
 
     def _setup_email_login_section(self, layout: QVBoxLayout):
         """Set up the email login section with input fields."""
-        self.email_input = self._create_input_field("Email", "icons8-email-24.png")  # Iconos
+        self.email_input = self._create_input_field("Email", "icons8-email-24.png")  
         self.password_input = self._create_input_field("Password", "icons8-password-24.png", is_password=True)
         layout.addWidget(self.email_input)
         layout.addWidget(self.password_input)
@@ -234,25 +234,25 @@ background-color: #005BB5;
         if user_id:
             self.logged_in_user_id = user_id
             QMessageBox.information(self, "Éxito", "Inicio de sesión exitoso.")
-            self._open_menu(user_id)  # Pasa el ID a _open_menu
+            self._open_menu(user_id)  
             self.close()
         else:
             QMessageBox.warning(self, "Error", "Credenciales inválidas.")
 
     def _process_login(self, email: str, password: str):
-        # Ya no se usa
+        
         pass
 
     def _open_menu(self, user_id):
         """Open the main menu after successful login."""
         try:
             print(f"🔑 Abriendo el menú principal para ID de usuario: {user_id}")
-            usuario = self.user_repository.obtener_usuario_por_id(user_id)  # Obtiene el OBJETO User
+            usuario = self.user_repository.obtener_usuario_por_id(user_id)  
             if usuario is None:
                 QMessageBox.critical(self, "Error", "Usuario no encontrado.")
                 return
 
-            self.menu_window = ModernTodoListApp(usuario=usuario)  # Pasa el OBJETO USUARIO
+            self.menu_window = ModernTodoListApp(usuario=usuario)  
             self.menu_window.show()
             self.hide()
         except Exception as e:
@@ -278,8 +278,8 @@ background-color: #005BB5;
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    from Register import Register  # Importa Register
-    register_window = Register()  # Crea una instancia de Register.
+    from Register import Register  
+    register_window = Register()  
     login_window = ModernLogin(register_window=register_window)
     login_window.show()
     sys.exit(app.exec())
