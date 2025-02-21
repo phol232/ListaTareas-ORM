@@ -128,7 +128,7 @@ background-color: #005BB5;
 
     def _setup_email_login_section(self, layout: QVBoxLayout):
         """Set up the email login section with input fields."""
-        self.email_input = self._create_input_field("Email", "icons8-email-24.png")  # Iconos
+        self.email_input = self._create_input_field("Email", "icons8-email-24.png")
         self.password_input = self._create_input_field("Password", "icons8-password-24.png", is_password=True)
         layout.addWidget(self.email_input)
         layout.addWidget(self.password_input)
@@ -214,7 +214,7 @@ background-color: #005BB5;
         if user_id:
             self.logged_in_user_id = user_id
             QMessageBox.information(self, "Éxito", "Inicio de sesión exitoso.")
-            self._open_menu(user_id)  # Pasa el ID a _open_menu
+            self._open_menu(user_id)
             self.close()
         else:
             QMessageBox.warning(self, "Error", "Credenciales inválidas.")
@@ -225,12 +225,12 @@ background-color: #005BB5;
     def _open_menu(self, user_id):
         try:
             print(f"🔑 Abriendo el menú principal para ID de usuario: {user_id}")
-            usuario = self.user_repository.obtener_usuario_por_id(user_id)  # Obtiene el OBJETO User
+            usuario = self.user_repository.obtener_usuario_por_id(user_id)
             if usuario is None:
                 QMessageBox.critical(self, "Error", "Usuario no encontrado.")
                 return
 
-            self.menu_window = ModernTodoListApp(usuario=usuario)  # Pasa el OBJETO USUARIO
+            self.menu_window = ModernTodoListApp(usuario=usuario)
             self.menu_window.show()
             self.hide()
         except Exception as e:

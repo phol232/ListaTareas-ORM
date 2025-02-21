@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc  # Import desc
-from src.Conexion.Tablas import User  # Asegúrate de que la ruta sea correcta
+from sqlalchemy import func, desc
+from src.Conexion.Tablas import User
 
 
 class UserRepository:

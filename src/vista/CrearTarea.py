@@ -34,7 +34,7 @@ class CategoryForm(QMainWindow):
         self.description.setFixedHeight(80)
         main_layout.addWidget(self.description)
 
-        self.categoria_combo = self.create_combo_field("CATEGORÍA:", [], main_layout)  # Sin opciones iniciales
+        self.categoria_combo = self.create_combo_field("CATEGORÍA:", [], main_layout)
         self.cargar_categorias()
         self.prioridad_combo = self.create_combo_field("PRIORIDAD:", ["Alta", "Media", "Baja"], main_layout)
         self.estado_combo = self.create_combo_field("ESTADO:", ["Pendiente", "En Proceso", "Completada"], main_layout)
@@ -115,6 +115,10 @@ class CategoryForm(QMainWindow):
                     estado=nueva_tarea["estado"],
                     fecha=nueva_tarea["fecha"]
                 )
+<<<<<<< HEAD
+=======
+
+>>>>>>> bf3e272c30dfd996ca0e5da957314125d4327920
                 nueva_tarea["id"] = tarea_creada.id if hasattr(tarea_creada, "id") else None
 
             QMessageBox.information(self, "Éxito", "✅ Tarea guardada exitosamente.")

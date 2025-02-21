@@ -2,7 +2,7 @@ import pymysql
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-#  ¡USA VARIABLES DE ENTORNO PARA ESTO EN PRODUCCIÓN!
+
 DATABASE_URL = "mysql+pymysql://root:root123456@localhost:3309/GestionTareas"
 
 # La conexión inicial para crear la BD ya no es necesaria aquí.

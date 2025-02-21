@@ -676,7 +676,7 @@ color: white;
         if hasattr(self, 'login_window') and self.login_window:
             self.login_window.show()
         else:
-            from src.vista.login import ModernLogin
+            from src.vista.Login import ModernLogin
             self.login_window = ModernLogin()
             self.login_window.show()
 
