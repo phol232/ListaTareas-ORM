@@ -17,7 +17,7 @@ class TareaRepository:
             return nuevo_id
 
     def crear_tarea(self, user_id: str, titulo: str, descripcion: str, categoria: str, prioridad: str, estado: str, fecha: str):
-        nuevo_id = self.generar_id_tarea()  # Generar ID en Python
+        nuevo_id = self.generar_id_tarea()  
 
         # Buscar la categoría por nombre.
         categoria_obj = self.session.query(Categoria).filter(func.lower(Categoria.nombre) == func.lower(categoria)).first()
@@ -25,7 +25,7 @@ class TareaRepository:
             raise ValueError(f"Categoría '{categoria}' no encontrada.")
 
         tarea = Tarea(
-            idTarea=nuevo_id,  # Usar el ID generado
+            idTarea=nuevo_id,  
             titulo=titulo,
             descripcion=descripcion,
             prioridad=prioridad,
