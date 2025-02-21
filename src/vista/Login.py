@@ -12,8 +12,6 @@ from src.logica.Usuarios import UserRepository
 from src.Conexion.BaseDatos import get_db
 from src.vista.Menu import ModernTodoListApp
 
-
-
 class ModernLogin(QWidget):
 
     WINDOW_TITLE = "Login"

@@ -15,10 +15,9 @@ from src.Conexion.BaseDatos import get_db
 class CategoryForm(QMainWindow):
     tarea_guardada = pyqtSignal(dict)
 
-    def __init__(self, user_id: str):  # <--- RECIBE user_id
+    def __init__(self, user_id: str):  # Recibe user_id
         super().__init__()
-
-        self.user_id = user_id  # <--- GUARDA user_id
+        self.user_id = user_id  # Guarda user_id
         self.setFixedWidth(330)
         self.init_ui()
 
@@ -78,15 +77,14 @@ class CategoryForm(QMainWindow):
     def cargar_categorias(self):
         """Carga las categorías desde la base de datos."""
         try:
-            # Obtiene una NUEVA sesión para esta operación
-            with next(get_db()) as db:  # <--- Context Manager!
+            # Obtiene una NUEVA sesión para esta operación (Context Manager)
+            with next(get_db()) as db:
                 categoria_repository = CategoriaRepository(db)
                 categorias = categoria_repository.listar_categorias()
                 nombres_categorias = [cat.nombre for cat in categorias]
                 self.categoria_combo.addItems(nombres_categorias)
                 if not nombres_categorias:
                     print("No se encontraron categorías. El combo estará vacío.")
-
         except Exception as e:
             print(f"Error al cargar categorías: {e}")
             QMessageBox.critical(self, "Error", "No se pudieron cargar las categorías.")
@@ -112,7 +110,7 @@ class CategoryForm(QMainWindow):
             print("Datos de tarea a guardar:", nueva_tarea)
 
             # Inserción de la tarea en la base de datos.
-            with next(get_db()) as db:  # <--- Context Manager!
+            with next(get_db()) as db:
                 tarea_repository = TareaRepository(db)
                 tarea_creada = tarea_repository.crear_tarea(
                     user_id=nueva_tarea["user_id"],
@@ -123,11 +121,10 @@ class CategoryForm(QMainWindow):
                     estado=nueva_tarea["estado"],
                     fecha=nueva_tarea["fecha"]
                 )
-                # Opcional: Puedes incluir más datos en la señal, si es que los necesitas.
+                # Agregamos el ID de la tarea creada si se desea
                 nueva_tarea["id"] = tarea_creada.id if hasattr(tarea_creada, "id") else None
 
             QMessageBox.information(self, "Éxito", "✅ Tarea guardada exitosamente.")
-            # Emite la señal con la tarea ya guardada
             self.tarea_guardada.emit(nueva_tarea)
             self.limpiar_formulario()
             self.close()

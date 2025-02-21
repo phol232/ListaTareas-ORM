@@ -1,7 +1,6 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
+from sqlalchemy import func, desc, text
 from src.Conexion.Tablas import Tarea, Categoria, User
-
 
 class TareaRepository:
     def __init__(self, session: Session):
@@ -18,7 +17,7 @@ class TareaRepository:
             return nuevo_id
 
     def crear_tarea(self, user_id: str, titulo: str, descripcion: str, categoria: str, prioridad: str, estado: str, fecha: str):
-        nuevo_id = self.generar_id_tarea()  # Generate ID *in Python*
+        nuevo_id = self.generar_id_tarea()  # Generar ID en Python
 
         # Buscar la categoría por nombre.
         categoria_obj = self.session.query(Categoria).filter(func.lower(Categoria.nombre) == func.lower(categoria)).first()
@@ -26,7 +25,7 @@ class TareaRepository:
             raise ValueError(f"Categoría '{categoria}' no encontrada.")
 
         tarea = Tarea(
-            idTarea=nuevo_id,  #  <--  USE THE GENERATED ID
+            idTarea=nuevo_id,  # Usar el ID generado
             titulo=titulo,
             descripcion=descripcion,
             prioridad=prioridad,
@@ -96,3 +95,14 @@ class TareaRepository:
             query = query.filter(func.lower(Tarea.estado) == estado.lower())
 
         return query.all()
+
+    def obtener_total_tareas(self):
+        result = self.session.execute(text("SELECT total_tasks FROM tarea_count WHERE id = 1")).fetchone()
+        return result[0] if result else 0
+
+    def obtener_totales_por_estado(self):
+        resultado = self.session.query(Tarea.estado, func.count(Tarea.idTarea)).group_by(Tarea.estado).all()
+        totales = {"Completada": 0, "En Proceso": 0, "Pendiente": 0}
+        for estado, cantidad in resultado:
+            totales[estado] = cantidad
+        return totales

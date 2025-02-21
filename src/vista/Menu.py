@@ -20,22 +20,23 @@ class ModernTodoListApp(QWidget):
         self.login_window = login_window
         self.setWindowTitle("TODO - LIST")
         self.setGeometry(100, 100, 1250, 700)
+
+        # Create an initial session for general use. (For updating totals we'll use a new session.)
         self.db = next(get_db())
         self.tarea_repository = TareaRepository(self.db)
-
         self.task_data = {}  # Diccionario que almacena las tareas cargadas (clave = idTarea)
+
         self.initUI()
         self.cargar_tareas()
+        self.actualizar_totales_por_estado()
 
     def cargar_tareas(self):
-        """
-Carga todas las tareas del usuario (sin filtro por prioridad) y actualiza la tabla.
-        """
         try:
             print("🔄 Cargando tareas...")
             if not self.usuario:
                 QMessageBox.warning(self, "Advertencia", "❌ No hay un usuario logueado.")
                 return
+            # Use a new session to load tasks
             with next(get_db()) as db:
                 tarea_repository = TareaRepository(db)
                 tareas = tarea_repository.obtener_tareas_de_usuario(self.usuario.id)
@@ -43,13 +44,11 @@ Carga todas las tareas del usuario (sin filtro por prioridad) y actualiza la tab
         except Exception as e:
             print(f"❌ Error al cargar tareas: {e}")
             QMessageBox.critical(self, "Error", f"Error al cargar tareas: {e}")
+        finally:
+            # Actualizamos los totales de tareas por estado
+            self.actualizar_totales_por_estado()
 
     def filtrar_tareas_por_prioridad(self, prioridad):
-        """
-Filtra las tareas del usuario según la prioridad.
-Si la prioridad es "Todas", se cargan todas las tareas.
-Se espera que prioridad sea 'Alta', 'Media', 'Baja' o 'Todas'.
-        """
         try:
             if prioridad.lower() == "todas":
                 print("🔎 Se seleccionó la opción Todas. Se cargarán todas las tareas.")
@@ -59,30 +58,22 @@ Se espera que prioridad sea 'Alta', 'Media', 'Baja' o 'Todas'.
             print(f"🔎 Filtrando tareas de prioridad: {prioridad}")
             with next(get_db()) as db:
                 tarea_repository = TareaRepository(db)
-                # Se obtiene la lista de tareas filtrando por prioridad sin importar mayúsculas/minúsculas
                 todas = tarea_repository.listar_tareas_por_prioridad(prioridad)
-                # Filtrar solo las tareas del usuario actual
                 tareas = [t for t in todas if t.id_usuario == self.usuario.id]
                 self.actualizar_tabla(tareas)
         except Exception as e:
             print(f"❌ Error al filtrar tareas: {e}")
             QMessageBox.critical(self, "Error", f"Error al filtrar tareas: {e}")
+        finally:
+            # Actualizamos los totales de tareas por estado
+            self.actualizar_totales_por_estado()
 
     def buscar_tareas(self):
-        """
-Filtra las tareas según el texto introducido en el input de búsqueda.
-Se utiliza el método buscar_tareas del repositorio, el cual permite filtrar
-por categoría (nombre) y/o estado (por ejemplo, 'Pendiente' o 'Completada').
-Si no se ingresa texto, se muestran todas las tareas.
-        """
         search_text = self.search_input.text().strip()
         if not search_text:
             self.cargar_tareas()
             return
-
         try:
-            # Asumiremos que si el texto coincide con un estado conocido se filtra por estado,
-            # de lo contrario se asume que es el nombre de una categoría
             estado_options = ("pendiente", "completada", "en proceso", "terminada")
             categoria = None
             estado = None
@@ -90,22 +81,18 @@ Si no se ingresa texto, se muestran todas las tareas.
                 estado = search_text
             else:
                 categoria = search_text
-
             with next(get_db()) as db:
                 tarea_repository = TareaRepository(db)
                 tareas = tarea_repository.buscar_tareas(categoria=categoria, estado=estado)
-                # Filtrar solo las tareas del usuario actual
                 tareas = [t for t in tareas if t.id_usuario == self.usuario.id]
                 self.actualizar_tabla(tareas)
         except Exception as e:
             print(f"❌ Error al buscar tareas: {e}")
             QMessageBox.critical(self, "Error", f"Error al buscar tareas: {e}")
-
+        finally:
+            self.actualizar_totales_por_estado()
 
     def actualizar_tabla(self, tareas):
-        """
-Actualiza la tabla con la lista de tareas proporcionada.
-        """
         self.task_table.setRowCount(0)
         self.task_data.clear()
         for tarea in tareas:
@@ -121,6 +108,17 @@ Actualiza la tabla con la lista de tareas proporcionada.
                 tarea.estado,
                 tarea.fecha.strftime("%Y-%m-%d") if tarea.fecha else ""
             )
+
+    def actualizar_totales_por_estado(self):
+        # Use a new session to fetch updated totals.
+        with next(get_db()) as db:
+            repo = TareaRepository(db)
+            total_tasks = repo.obtener_total_tareas()
+            totales = repo.obtener_totales_por_estado()  # Expected keys: "Completada", "En Proceso", "Pendiente"
+            self.total_tasks_label.setText(str(total_tasks))
+            self.completed_tasks_label.setText(str(totales.get("Completada", 0)))
+            self.inprocess_tasks_label.setText(str(totales.get("En Proceso", 0)))
+            self.pending_tasks_label.setText(str(totales.get("Pendiente", 0)))
 
     def initUI(self):
         if self.usuario:
@@ -205,7 +203,6 @@ background-color: #c0392b;
         """)
         logout_button.clicked.connect(self.logout)
         sidebar_layout.addWidget(logout_button)
-
         sidebar_frame.setLayout(sidebar_layout)
         main_layout.addWidget(sidebar_frame)
 
@@ -239,28 +236,97 @@ background-color: #e0e0e0;
         top_header.addWidget(notification_button)
         header_layout.addLayout(top_header)
 
-        rectangles_layout = QHBoxLayout()
-        rect1 = QFrame()
-        rect1.setFixedSize(200, 100)
-        rect1.setStyleSheet("""
-background-color: white;
-border: 3px solid #dcdde1;
-border-radius: 5px;
-        """)
-        rectangles_layout.addWidget(rect1)
+        # Layout for the 4 status cards: Total, Completadas, En Proceso, Pendientes
+        status_layout = QHBoxLayout()
 
-        rect2 = QFrame()
-        rect2.setFixedHeight(100)
-        rect2.setStyleSheet("""
+        # Total Tasks Card
+        total_frame = QFrame()
+        total_frame.setFixedSize(200, 100)
+        total_frame.setStyleSheet("""
 background-color: white;
 border: 3px solid #dcdde1;
 border-radius: 5px;
         """)
-        rectangles_layout.addWidget(rect2)
-        header_layout.addLayout(rectangles_layout)
+        total_layout = QVBoxLayout()
+        total_title = QLabel("Total Tareas")
+        total_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        font_title = QFont()
+        font_title.setPointSize(14)
+        total_title.setFont(font_title)
+        total_layout.addWidget(total_title)
+        self.total_tasks_label = QLabel("0")
+        self.total_tasks_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        font_count = QFont()
+        font_count.setPointSize(24)
+        self.total_tasks_label.setFont(font_count)
+        total_layout.addWidget(self.total_tasks_label)
+        total_frame.setLayout(total_layout)
+        status_layout.addWidget(total_frame)
+
+        # Completed Tasks Card
+        completed_frame = QFrame()
+        completed_frame.setFixedSize(200, 100)
+        completed_frame.setStyleSheet("""
+background-color: white;
+border: 3px solid #dcdde1;
+border-radius: 5px;
+        """)
+        completed_layout = QVBoxLayout()
+        completed_title = QLabel("Completadas")
+        completed_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        completed_title.setFont(font_title)
+        completed_layout.addWidget(completed_title)
+        self.completed_tasks_label = QLabel("0")
+        self.completed_tasks_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.completed_tasks_label.setFont(font_count)
+        completed_layout.addWidget(self.completed_tasks_label)
+        completed_frame.setLayout(completed_layout)
+        status_layout.addWidget(completed_frame)
+
+        # In Process Tasks Card
+        inprocess_frame = QFrame()
+        inprocess_frame.setFixedSize(200, 100)
+        inprocess_frame.setStyleSheet("""
+background-color: white;
+border: 3px solid #dcdde1;
+border-radius: 5px;
+        """)
+        inprocess_layout = QVBoxLayout()
+        inprocess_title = QLabel("En Proceso")
+        inprocess_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        inprocess_title.setFont(font_title)
+        inprocess_layout.addWidget(inprocess_title)
+        self.inprocess_tasks_label = QLabel("0")
+        self.inprocess_tasks_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.inprocess_tasks_label.setFont(font_count)
+        inprocess_layout.addWidget(self.inprocess_tasks_label)
+        inprocess_frame.setLayout(inprocess_layout)
+        status_layout.addWidget(inprocess_frame)
+
+        # Pending Tasks Card
+        pending_frame = QFrame()
+        pending_frame.setFixedSize(200, 100)
+        pending_frame.setStyleSheet("""
+background-color: white;
+border: 3px solid #dcdde1;
+border-radius: 5px;
+        """)
+        pending_layout = QVBoxLayout()
+        pending_title = QLabel("Pendientes")
+        pending_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pending_title.setFont(font_title)
+        pending_layout.addWidget(pending_title)
+        self.pending_tasks_label = QLabel("0")
+        self.pending_tasks_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.pending_tasks_label.setFont(font_count)
+        pending_layout.addWidget(self.pending_tasks_label)
+        pending_frame.setLayout(pending_layout)
+        status_layout.addWidget(pending_frame)
+
+        header_layout.addLayout(status_layout)
         content_layout.addLayout(header_layout)
 
-        # Filter/Layout with Priority menu and search input
+        # Filter and Search Layout
         filter_layout = QHBoxLayout()
         self.priority_button = QPushButton("PRIORIDAD")
         self.priority_button.setStyleSheet("""
@@ -275,26 +341,21 @@ background-color: #d0d0d0;
 }
         """)
         self.priority_menu = QMenu()
-
-        # Option: Todas
         todas_option = self.priority_menu.addAction("Todas")
         todas_option.triggered.connect(lambda: (
                                            self.priority_button.setText("Todas"),
                                            self.cargar_tareas()
                                        ))
-        # Priority High (Alta)
         high_priority = self.priority_menu.addAction("Alta")
         high_priority.triggered.connect(lambda: (
                                             self.priority_button.setText("Alta 🔴"),
                                             self.filtrar_tareas_por_prioridad("Alta")
                                         ))
-        # Priority Medium (Media)
         medium_priority = self.priority_menu.addAction("Media")
         medium_priority.triggered.connect(lambda: (
                                               self.priority_button.setText("Media 🟡"),
                                               self.filtrar_tareas_por_prioridad("Media")
                                           ))
-        # Priority Low (Baja)
         low_priority = self.priority_menu.addAction("Baja")
         low_priority.triggered.connect(lambda: (
                                            self.priority_button.setText("Baja 🟢"),
@@ -303,7 +364,6 @@ background-color: #d0d0d0;
         self.priority_button.setMenu(self.priority_menu)
         filter_layout.addWidget(self.priority_button)
 
-        # Search input and search button
         input_wrapper = QFrame()
         input_wrapper.setStyleSheet("""
 QFrame {
@@ -317,11 +377,9 @@ border: 1px solid #dcdde1;
         input_layout = QHBoxLayout(input_wrapper)
         input_layout.setContentsMargins(2, 0, 2, 0)
         input_layout.setSpacing(2)
-
         icon_label = QLabel("🔍")
         icon_label.setStyleSheet("color: black; margin: 0px; font-size: 14px; border: none;")
         input_layout.addWidget(icon_label)
-
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Categorias o estado")
         self.search_input.setMinimumSize(140, 30)
@@ -337,7 +395,6 @@ height: 25px;
 }
         """)
         input_layout.addWidget(self.search_input)
-
         search_button = QPushButton("BUSCAR")
         search_button.setFixedHeight(30)
         search_button.setStyleSheet("""
@@ -355,7 +412,6 @@ background-color: #e1a500;
 color: white;
 }
         """)
-        # Connect search button to the search function
         search_button.clicked.connect(self.buscar_tareas)
         input_layout.addWidget(search_button)
         filter_layout.addWidget(input_wrapper)
@@ -413,7 +469,6 @@ color: black;
         self.task_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.task_table.setSelectionMode(QAbstractItemView.SelectionMode.NoSelection)
         self.task_table.setShowGrid(False)
-
         header = self.task_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         self.task_table.setColumnWidth(0, 40)
@@ -424,7 +479,6 @@ color: black;
         header.setSectionResizeMode(8, QHeaderView.ResizeMode.Fixed)
         self.task_table.setColumnWidth(8, 0)
         self.task_table.setColumnHidden(8, True)
-
         content_layout.addWidget(self.task_table)
         content_frame.setLayout(content_layout)
         main_layout.addWidget(content_frame)
@@ -452,6 +506,7 @@ color: black;
     def agregar_tarea_desde_formulario(self, tarea):
         print("✅ Tarea guardada. Se actualizará la lista de tareas.")
         self.cargar_tareas()
+        self.actualizar_totales_por_estado()
         QMessageBox.information(self, "Éxito", "✅ Tarea guardada exitosamente.")
 
     def agregar_tarea(self, id_tarea, nombre, descripcion, categoria, prioridad, estado, fecha):
@@ -461,19 +516,16 @@ color: black;
         checkbox.setChecked(True if estado == "Completada" else False)
         checkbox.stateChanged.connect(lambda state, tid=id_tarea: self.actualizar_estado_tarea(tid, state))
         self.task_table.setCellWidget(row, 0, checkbox)
-
         self.task_table.setItem(row, 1, QTableWidgetItem(nombre))
         self.task_table.setItem(row, 2, QTableWidgetItem(descripcion))
         self.task_table.setItem(row, 3, QTableWidgetItem(categoria))
         self.task_table.setItem(row, 4, QTableWidgetItem(prioridad))
         self.task_table.setItem(row, 5, QTableWidgetItem(estado))
         self.task_table.setItem(row, 6, QTableWidgetItem(fecha))
-
         action_widget = QWidget()
         action_layout = QHBoxLayout(action_widget)
         action_layout.setContentsMargins(5, 2, 5, 2)
         action_layout.setSpacing(5)
-
         btn_edit = QPushButton("Editar")
         btn_edit.setStyleSheet("""
 QPushButton {
@@ -522,6 +574,8 @@ color: white;
                 row = self.obtener_fila_por_id(id_tarea)
                 if row is not None:
                     self.task_table.item(row, 5).setText(nuevo_estado)
+                # Update the status cards after a change in state
+                self.actualizar_totales_por_estado()
             else:
                 QMessageBox.critical(self, "Error", "No se pudo actualizar el estado en la base de datos.")
         except Exception as e:
@@ -586,6 +640,7 @@ color: white;
                 QMessageBox.warning(self, "Error", "No se pudo obtener el ID de la tarea")
         else:
             print("Eliminación cancelada.")
+        self.actualizar_totales_por_estado()
 
     def logout(self):
         message_box = QMessageBox()
