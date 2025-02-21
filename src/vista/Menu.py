@@ -21,10 +21,10 @@ class ModernTodoListApp(QWidget):
         self.setWindowTitle("TODO - LIST")
         self.setGeometry(100, 100, 1250, 700)
 
-        # Create an initial session for general use. (For updating totals we'll use a new session.)
+        
         self.db = next(get_db())
         self.tarea_repository = TareaRepository(self.db)
-        self.task_data = {}  # Diccionario que almacena las tareas cargadas (clave = idTarea)
+        self.task_data = {}  
 
         self.initUI()
         self.cargar_tareas()
@@ -36,7 +36,7 @@ class ModernTodoListApp(QWidget):
             if not self.usuario:
                 QMessageBox.warning(self, "Advertencia", "❌ No hay un usuario logueado.")
                 return
-            # Use a new session to load tasks
+            
             with next(get_db()) as db:
                 tarea_repository = TareaRepository(db)
                 tareas = tarea_repository.obtener_tareas_de_usuario(self.usuario.id)
@@ -45,7 +45,7 @@ class ModernTodoListApp(QWidget):
             print(f"❌ Error al cargar tareas: {e}")
             QMessageBox.critical(self, "Error", f"Error al cargar tareas: {e}")
         finally:
-            # Actualizamos los totales de tareas por estado
+            
             self.actualizar_totales_por_estado()
 
     def filtrar_tareas_por_prioridad(self, prioridad):
@@ -65,7 +65,7 @@ class ModernTodoListApp(QWidget):
             print(f"❌ Error al filtrar tareas: {e}")
             QMessageBox.critical(self, "Error", f"Error al filtrar tareas: {e}")
         finally:
-            # Actualizamos los totales de tareas por estado
+            
             self.actualizar_totales_por_estado()
 
     def buscar_tareas(self):
@@ -110,11 +110,11 @@ class ModernTodoListApp(QWidget):
             )
 
     def actualizar_totales_por_estado(self):
-        # Use a new session to fetch updated totals.
+        
         with next(get_db()) as db:
             repo = TareaRepository(db)
             total_tasks = repo.obtener_total_tareas()
-            totales = repo.obtener_totales_por_estado()  # Expected keys: "Completada", "En Proceso", "Pendiente"
+            totales = repo.obtener_totales_por_estado()  
             self.total_tasks_label.setText(str(total_tasks))
             self.completed_tasks_label.setText(str(totales.get("Completada", 0)))
             self.inprocess_tasks_label.setText(str(totales.get("En Proceso", 0)))
@@ -206,14 +206,14 @@ background-color: #c0392b;
         sidebar_frame.setLayout(sidebar_layout)
         main_layout.addWidget(sidebar_frame)
 
-        # Content Frame
+        
         content_frame = QFrame()
         content_frame.setStyleSheet("background-color: #f5f6fa;")
         content_layout = QVBoxLayout()
         content_layout.setContentsMargins(30, 30, 30, 30)
         content_layout.setSpacing(20)
 
-        # Header
+        
         header_layout = QVBoxLayout()
         top_header = QHBoxLayout()
         welcome_header = QLabel(f"Welcome back {self.usuario.name if self.usuario else 'Usuario'}")
@@ -236,10 +236,10 @@ background-color: #e0e0e0;
         top_header.addWidget(notification_button)
         header_layout.addLayout(top_header)
 
-        # Layout for the 4 status cards: Total, Completadas, En Proceso, Pendientes
+        
         status_layout = QHBoxLayout()
 
-        # Total Tasks Card
+        
         total_frame = QFrame()
         total_frame.setFixedSize(200, 100)
         total_frame.setStyleSheet("""
@@ -263,7 +263,7 @@ border-radius: 5px;
         total_frame.setLayout(total_layout)
         status_layout.addWidget(total_frame)
 
-        # Completed Tasks Card
+        
         completed_frame = QFrame()
         completed_frame.setFixedSize(200, 100)
         completed_frame.setStyleSheet("""
@@ -283,7 +283,7 @@ border-radius: 5px;
         completed_frame.setLayout(completed_layout)
         status_layout.addWidget(completed_frame)
 
-        # In Process Tasks Card
+        
         inprocess_frame = QFrame()
         inprocess_frame.setFixedSize(200, 100)
         inprocess_frame.setStyleSheet("""
@@ -303,7 +303,7 @@ border-radius: 5px;
         inprocess_frame.setLayout(inprocess_layout)
         status_layout.addWidget(inprocess_frame)
 
-        # Pending Tasks Card
+        
         pending_frame = QFrame()
         pending_frame.setFixedSize(200, 100)
         pending_frame.setStyleSheet("""
@@ -326,7 +326,7 @@ border-radius: 5px;
         header_layout.addLayout(status_layout)
         content_layout.addLayout(header_layout)
 
-        # Filter and Search Layout
+        
         filter_layout = QHBoxLayout()
         self.priority_button = QPushButton("PRIORIDAD")
         self.priority_button.setStyleSheet("""
@@ -493,8 +493,8 @@ color: black;
             main_x = main_window_geometry.x()
             main_y = main_window_geometry.y()
             main_width = main_window_geometry.width()
-            window_width = 350  # Ancho de CategoryForm
-            window_height = 500  # Altura CategoryForm
+            window_width = 350  
+            window_height = 500  
             x_position = main_x + (main_width - window_width) // 2
             y_position = main_y + (700 - window_height) // 2
             self.new_task_window.resize(window_width, window_height)
@@ -574,7 +574,7 @@ color: white;
                 row = self.obtener_fila_por_id(id_tarea)
                 if row is not None:
                     self.task_table.item(row, 5).setText(nuevo_estado)
-                # Update the status cards after a change in state
+                
                 self.actualizar_totales_por_estado()
             else:
                 QMessageBox.critical(self, "Error", "No se pudo actualizar el estado en la base de datos.")
