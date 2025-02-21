@@ -9,7 +9,7 @@ from src.logica.Tareas import TareaRepository
 from src.Conexion.BaseDatos import get_db
 
 class EditarTarea(QMainWindow):
-    tarea_guardada = pyqtSignal(dict)  # Señal para emitir los datos actualizados
+    tarea_guardada = pyqtSignal(dict)  
 
     def __init__(self, tarea_data):
         super().__init__()
@@ -83,7 +83,7 @@ class EditarTarea(QMainWindow):
     def guardar_cambios(self):
         try:
             tarea_actualizada = {
-                "idTarea": self.tarea_data["idTarea"],  # Conserva el id original
+                "idTarea": self.tarea_data["idTarea"],  
                 "titulo": self.titulo_input.text().strip(),
                 "descripcion": self.description.toPlainText().strip(),
                 "categoria": self.categoria_combo.currentText(),
@@ -96,7 +96,7 @@ class EditarTarea(QMainWindow):
                 QMessageBox.warning(self, "Campos vacíos", "Los campos no pueden estar vacíos.")
                 return
 
-            # Actualiza la tarea en la base de datos a través del repositorio.
+            
             actualizado = self.tarea_repository.actualizar_tarea(
                 tarea_id=tarea_actualizada["idTarea"],
                 titulo=tarea_actualizada["titulo"],
@@ -111,7 +111,7 @@ class EditarTarea(QMainWindow):
                 QMessageBox.critical(self, "Error", "No se pudo actualizar la tarea en la base de datos.")
                 return
 
-            # Emite la señal con los datos actualizados.
+            
             self.tarea_guardada.emit(tarea_actualizada)
             self.close()
 
@@ -119,7 +119,7 @@ class EditarTarea(QMainWindow):
             QMessageBox.critical(self, "Error", f"Error al guardar los cambios: {e}")
 
     def closeEvent(self, event):
-        # Cierra la sesión de base de datos si está abierta
+        
         if hasattr(self, 'db') and self.db:
             self.db.close()
         event.accept()
